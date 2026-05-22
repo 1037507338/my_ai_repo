@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>基金实时估值跟踪器 v4.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>基金实时估值跟踪器 v5.0</title>
     <style>
         * {
             margin: 0;
@@ -15,7 +15,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
         }
 
         .container {
@@ -30,43 +30,43 @@
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px;
+            padding: 20px;
             text-align: center;
         }
 
         .header h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
+            font-size: 24px;
+            margin-bottom: 8px;
         }
 
         .header p {
             opacity: 0.9;
-            font-size: 14px;
+            font-size: 12px;
         }
 
         .controls {
-            padding: 20px 30px;
+            padding: 15px;
             background: #f8f9fa;
             border-bottom: 1px solid #e9ecef;
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
             align-items: center;
         }
 
         .input-group {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex: 1;
-            min-width: 300px;
+            min-width: 250px;
         }
 
         .input-group input {
             flex: 1;
-            padding: 10px 15px;
+            padding: 12px 15px;
             border: 2px solid #dee2e6;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px; /* 防止iOS缩放 */
             transition: border-color 0.3s;
         }
 
@@ -76,13 +76,14 @@
         }
 
         button {
-            padding: 10px 20px;
+            padding: 12px 20px;
             border: none;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            white-space: nowrap;
         }
 
         .btn-add {
@@ -119,15 +120,15 @@
         }
 
         .status-bar {
-            padding: 15px 30px;
+            padding: 12px 15px;
             background: #e9ecef;
-            font-size: 13px;
+            font-size: 12px;
             color: #495057;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
         }
 
         .status-bar .time {
@@ -135,8 +136,10 @@
             color: #667eea;
         }
 
+        /* 桌面端：表格布局 */
         .table-container {
             overflow-x: auto;
+            display: block;
         }
 
         table {
@@ -153,10 +156,10 @@
         }
 
         th {
-            padding: 15px;
+            padding: 12px;
             text-align: left;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         tbody tr {
@@ -188,8 +191,8 @@
         }
 
         td {
-            padding: 15px;
-            font-size: 14px;
+            padding: 12px;
+            font-size: 13px;
         }
 
         .drag-handle {
@@ -209,7 +212,7 @@
 
         .fund-name {
             color: #495057;
-            max-width: 200px;
+            max-width: 150px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -222,7 +225,7 @@
 
         .growth {
             font-weight: 700;
-            font-size: 16px;
+            font-size: 14px;
             font-family: "Courier New", monospace;
         }
 
@@ -235,7 +238,7 @@
         }
 
         .delete-btn {
-            padding: 5px 10px;
+            padding: 6px 12px;
             background: #dc3545;
             color: white;
             border: none;
@@ -252,7 +255,7 @@
 
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
+            padding: 40px 20px;
             color: #6c757d;
         }
 
@@ -282,22 +285,152 @@
             font-size: 12px;
         }
 
+        /* 移动端：卡片布局 */
         @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+
+            .header {
+                padding: 15px;
+            }
+
             .header h1 {
-                font-size: 24px;
+                font-size: 20px;
             }
 
             .controls {
                 flex-direction: column;
+                padding: 10px;
             }
 
             .input-group {
                 min-width: 100%;
             }
 
-            th, td {
+            .input-group input {
+                font-size: 16px; /* 防止iOS自动缩放 */
+            }
+
+            button {
+                width: 100%;
+                padding: 14px;
+                font-size: 16px;
+            }
+
+            .status-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            /* 隐藏表格，显示卡片 */
+            .table-container {
+                display: none;
+            }
+
+            .cards-container {
+                display: block;
                 padding: 10px;
-                font-size: 13px;
+            }
+
+            .fund-card {
+                background: white;
+                border: 1px solid #e9ecef;
+                border-radius: 12px;
+                padding: 15px;
+                margin-bottom: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                position: relative;
+            }
+
+            .fund-card.dragging {
+                opacity: 0.5;
+                background: #fff3cd;
+            }
+
+            .fund-card.drag-over {
+                border-top: 3px solid #667eea;
+            }
+
+            .card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+
+            .card-fund-code {
+                font-weight: 700;
+                font-size: 16px;
+                color: #667eea;
+            }
+
+            .card-drag-handle {
+                color: #adb5bd;
+                cursor: move;
+                font-size: 18px;
+            }
+
+            .card-fund-name {
+                font-size: 14px;
+                color: #495057;
+                margin-bottom: 10px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .card-data {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+
+            .card-data-item {
+                background: #f8f9fa;
+                padding: 8px;
+                border-radius: 6px;
+                text-align: center;
+            }
+
+            .card-data-label {
+                font-size: 11px;
+                color: #6c757d;
+                margin-bottom: 4px;
+            }
+
+            .card-data-value {
+                font-size: 14px;
+                font-weight: 600;
+                font-family: "Courier New", monospace;
+            }
+
+            .card-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 11px;
+                color: #6c757d;
+            }
+
+            .card-delete-btn {
+                padding: 8px 16px;
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                width: 100%;
+                margin-top: 10px;
+            }
+        }
+
+        /* 桌面端：隐藏卡片 */
+        @media (min-width: 769px) {
+            .cards-container {
+                display: none;
             }
         }
     </style>
@@ -305,8 +438,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 基金实时估值跟踪器 v4.0</h1>
-            <p>✨ 支持拖拽排序 · 2分钟自动刷新 · Vercel API代理</p>
+            <h1>📊 基金实时估值跟踪器 v5.0</h1>
+            <p>✨ 支持拖拽排序 · 移动端适配 · 服务器存储</p>
         </div>
 
         <div class="controls">
@@ -315,28 +448,31 @@
                     type="text" 
                     id="fundCodeInput" 
                     placeholder="输入基金代码（如：003567）"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
                     onkeypress="if(event.key==='Enter') addFund()"
                 >
-                <button class="btn-add" onclick="addFund()">➕ 添加基金</button>
+                <button class="btn-add" onclick="addFund()">➕ 添加</button>
             </div>
-            <button class="btn-refresh" onclick="refreshAll()">🔄 立即刷新</button>
-            <button class="btn-clear" onclick="clearAll()">🗑️ 清空列表</button>
+            <button class="btn-refresh" onclick="refreshAll()">🔄 刷新</button>
+            <button class="btn-clear" onclick="clearAll()">🗑️ 清空</button>
         </div>
 
         <div class="status-bar">
             <div>
                 <span>📅 交易日：</span>
                 <span class="time" id="tradingDate">--</span>
-                <span style="margin-left: 20px;">⏰ 当前时间：</span>
+                <span style="margin-left: 10px;">⏰ 当前：</span>
                 <span class="time" id="currentTime">--:--:--</span>
             </div>
             <div>
                 最后更新：<span id="lastUpdateTime" class="time">--</span>
                 <span style="margin-left: 10px; color: #6c757d;">|</span>
-                <span style="margin-left: 10px; font-size: 12px; color: #6c757d;">自动刷新：2分钟</span>
+                <span style="margin-left: 10px; font-size: 11px; color: #6c757d;">自动刷新：2分钟</span>
             </div>
         </div>
 
+        <!-- 桌面端：表格布局 -->
         <div class="table-container">
             <table>
                 <thead>
@@ -358,12 +494,19 @@
                             <div class="empty-state">
                                 <p><strong>暂无基金</strong></p>
                                 <p>在上方输入框中添加基金代码开始跟踪</p>
-                                <p style="margin-top: 10px; font-size: 12px; color: #adb5bd;">💡 提示：可以添加后拖拽排序</p>
                             </div>
                         </td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- 移动端：卡片布局 -->
+        <div class="cards-container" id="fundCardsContainer">
+            <div class="empty-state">
+                <p><strong>暂无基金</strong></p>
+                <p>在上方输入框中添加基金代码开始跟踪</p>
+            </div>
         </div>
 
         <div class="loading" id="loadingIndicator" style="display: none;">
@@ -373,11 +516,12 @@
     </div>
 
     <script>
-        // 基金列表（从localStorage加载）
+        // 基金列表
         let fundList = [];
         let refreshInterval = null;
         let isLoading = false;
         let dragSrcEl = null;
+        let useServerStorage = true; // 是否使用服务器存储
 
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -393,19 +537,82 @@
             }
         });
 
-        // 加载基金列表
-        function loadFundList() {
+        // 加载基金列表（优先从服务器，备用localStorage）
+        async function loadFundList() {
+            if (useServerStorage) {
+                try {
+                    const data = await fetchFundListFromServer();
+                    if (data && data.length > 0) {
+                        fundList = data;
+                        console.log('从服务器加载基金列表：', fundList);
+                        renderTable();
+                        renderCards();
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('从服务器加载失败，使用localStorage：', error);
+                    useServerStorage = false;
+                }
+            }
+            
+            // 备用：从localStorage加载
             const saved = localStorage.getItem('fundTrackerList');
             if (saved) {
                 fundList = JSON.parse(saved);
-                console.log('加载基金列表：', fundList);
+                console.log('从localStorage加载基金列表：', fundList);
                 renderTable();
+                renderCards();
             }
         }
 
-        // 保存基金列表
-        function saveFundList() {
+        // 保存基金列表（同时保存到服务器和localStorage）
+        async function saveFundList() {
+            // 总是保存到localStorage（作为备用）
             localStorage.setItem('fundTrackerList', JSON.stringify(fundList));
+            
+            // 尝试保存到服务器
+            if (useServerStorage) {
+                try {
+                    await saveFundListToServer(fundList);
+                    console.log('基金列表已保存到服务器');
+                } catch (error) {
+                    console.warn('保存到服务器失败：', error);
+                    useServerStorage = false;
+                }
+            }
+        }
+
+        // 从服务器加载基金列表
+        async function fetchFundListFromServer() {
+            const response = await fetch('/api/funds');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            if (result.code !== 0) {
+                throw new Error(result.error || 'API返回错误');
+            }
+            return result.data;
+        }
+
+        // 保存基金列表到服务器
+        async function saveFundListToServer(funds) {
+            const response = await fetch('/api/funds', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(funds)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            if (result.code !== 0) {
+                throw new Error(result.error || 'API返回错误');
+            }
         }
 
         // 添加基金
@@ -437,8 +644,9 @@
                 if (data) {
                     console.log('基金数据获取成功：', data);
                     fundList.push(code);
-                    saveFundList();
+                    await saveFundList();
                     renderTable();
+                    renderCards();
                     input.value = '';
                     refreshAll();
                     startAutoRefresh();
@@ -455,11 +663,12 @@
         }
 
         // 删除基金
-        function deleteFund(index) {
+        async function deleteFund(index) {
             if (confirm('确定要删除这只基金吗？')) {
                 fundList.splice(index, 1);
-                saveFundList();
+                await saveFundList();
                 renderTable();
+                renderCards();
                 
                 if (fundList.length === 0) {
                     stopAutoRefresh();
@@ -468,7 +677,7 @@
         }
 
         // 清空列表
-        function clearAll() {
+        async function clearAll() {
             if (fundList.length === 0) {
                 alert('列表已为空！');
                 return;
@@ -476,8 +685,9 @@
 
             if (confirm('确定要清空所有基金吗？此操作不可恢复！')) {
                 fundList = [];
-                saveFundList();
+                await saveFundList();
                 renderTable();
+                renderCards();
                 stopAutoRefresh();
             }
         }
@@ -487,7 +697,6 @@
             try {
                 console.log('开始获取基金数据：', fundCode);
                 
-                // 调用Vercel API路由（同源，无CORS问题）
                 const response = await fetch(`/api/fund?code=${fundCode}`);
                 
                 if (!response.ok) {
@@ -504,7 +713,6 @@
                 
                 console.log('API返回数据：', data);
                 
-                // 处理数据
                 const output = {
                     code: data.fundcode,
                     name: data.name,
@@ -539,10 +747,12 @@
                     const data = await fetchFundData(code);
                     if (data) {
                         updateRow(i, data);
+                        updateCard(i, data);
                     }
                 } catch (error) {
                     console.error('刷新基金失败：', code, error);
                     updateRowError(i);
+                    updateCardError(i);
                 }
             }
             
@@ -564,7 +774,6 @@
             row.cells[3].textContent = data.name;
             row.cells[4].textContent = data.nav.toFixed(4);
             
-            // 处理估算净值为null的情况
             if (data.estimatedNav !== null && data.estimatedNav !== undefined) {
                 row.cells[5].textContent = data.estimatedNav.toFixed(4);
                 
@@ -574,7 +783,6 @@
                 
                 row.cells[7].textContent = data.time;
             } else {
-                // 非交易时间
                 row.cells[5].textContent = '暂无';
                 row.cells[6].textContent = '--';
                 row.cells[6].className = 'growth';
@@ -582,6 +790,36 @@
             }
             
             setTimeout(() => row.classList.remove('updating'), 500);
+        }
+
+        // 更新卡片
+        function updateCard(index, data) {
+            const container = document.getElementById('fundCardsContainer');
+            const cards = container.querySelectorAll('.fund-card');
+            
+            if (index >= cards.length) return;
+            
+            const card = cards[index];
+            card.classList.add('updating');
+            
+            card.querySelector('.card-fund-name').textContent = data.name;
+            card.querySelector('.card-data-item:nth-child(1) .card-data-value').textContent = data.nav.toFixed(4);
+            
+            if (data.estimatedNav !== null && data.estimatedNav !== undefined) {
+                card.querySelector('.card-data-item:nth-child(2) .card-data-value').textContent = data.estimatedNav.toFixed(4);
+                
+                const growthValue = card.querySelector('.card-data-item:nth-child(3) .card-data-value');
+                growthValue.textContent = data.growth.toFixed(2) + '%';
+                growthValue.style.color = data.growth >= 0 ? '#dc3545' : '#28a745';
+                
+                card.querySelector('.card-footer').innerHTML = `<span>${data.time}</span><span>估值时间</span>`;
+            } else {
+                card.querySelector('.card-data-item:nth-child(2) .card-data-value').textContent = '暂无';
+                card.querySelector('.card-data-item:nth-child(3) .card-data-value').textContent = '--';
+                card.querySelector('.card-footer').innerHTML = `<span>非交易时间</span><span>--</span>`;
+            }
+            
+            setTimeout(() => card.classList.remove('updating'), 500);
         }
 
         // 更新行（错误）
@@ -600,7 +838,19 @@
             row.cells[7].textContent = '--';
         }
 
-        // 渲染表格（支持拖拽）
+        // 更新卡片（错误）
+        function updateCardError(index) {
+            const container = document.getElementById('fundCardsContainer');
+            const cards = container.querySelectorAll('.fund-card');
+            
+            if (index >= cards.length) return;
+            
+            const card = cards[index];
+            card.querySelector('.card-fund-name').textContent = '获取失败';
+            card.querySelector('.card-fund-name').className = 'card-fund-name error';
+        }
+
+        // 渲染表格
         function renderTable() {
             const tbody = document.getElementById('fundTableBody');
             
@@ -611,7 +861,6 @@
                             <div class="empty-state">
                                 <p><strong>暂无基金</strong></p>
                                 <p>在上方输入框中添加基金代码开始跟踪</p>
-                                <p style="margin-top: 10px; font-size: 12px; color: #adb5bd;">💡 提示：可以添加后拖拽排序</p>
                             </div>
                         </td>
                     </tr>
@@ -638,7 +887,6 @@
                     <td><button class="delete-btn" onclick="deleteFund(${index})">删除</button></td>
                 `;
                 
-                // 拖拽事件
                 row.addEventListener('dragstart', handleDragStart);
                 row.addEventListener('dragover', handleDragOver);
                 row.addEventListener('dragenter', handleDragEnter);
@@ -650,7 +898,71 @@
             });
         }
 
-        // 拖拽功能实现
+        // 渲染卡片（移动端）
+        function renderCards() {
+            const container = document.getElementById('fundCardsContainer');
+            
+            if (fundList.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p><strong>暂无基金</strong></p>
+                        <p>在上方输入框中添加基金代码开始跟踪</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            fundList.forEach((code, index) => {
+                const card = document.createElement('div');
+                card.className = 'fund-card';
+                card.draggable = true;
+                card.dataset.index = index;
+                
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span class="card-fund-code">${code}</span>
+                        <span class="card-drag-handle">☰</span>
+                    </div>
+                    <div class="card-fund-name">加载中...</div>
+                    <div class="card-data">
+                        <div class="card-data-item">
+                            <div class="card-data-label">昨日净值</div>
+                            <div class="card-data-value">--</div>
+                        </div>
+                        <div class="card-data-item">
+                            <div class="card-data-label">估算净值</div>
+                            <div class="card-data-value">--</div>
+                        </div>
+                        <div class="card-data-item">
+                            <div class="card-data-label">估算涨幅</div>
+                            <div class="card-data-value">--</div>
+                        </div>
+                        <div class="card-data-item">
+                            <div class="card-data-label">状态</div>
+                            <div class="card-data-value">--</div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span>--</span>
+                        <span>估值时间</span>
+                    </div>
+                    <button class="card-delete-btn" onclick="deleteFund(${index})">删除</button>
+                `;
+                
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragover', handleDragOver);
+                card.addEventListener('dragenter', handleDragEnter);
+                card.addEventListener('dragleave', handleDragLeave);
+                card.addEventListener('drop', handleDrop);
+                card.addEventListener('dragend', handleDragEnd);
+                
+                container.appendChild(card);
+            });
+        }
+
+        // 拖拽功能
         function handleDragStart(e) {
             dragSrcEl = this;
             this.classList.add('dragging');
@@ -680,20 +992,18 @@
             }
             
             if (dragSrcEl !== this) {
-                // 获取拖拽源和目标的索引
                 const srcIndex = parseInt(dragSrcEl.dataset.index);
                 const destIndex = parseInt(this.dataset.index);
                 
                 console.log(`拖拽排序：${srcIndex} → ${destIndex}`);
                 
-                // 重新排序数组
                 const draggedItem = fundList[srcIndex];
                 fundList.splice(srcIndex, 1);
                 fundList.splice(destIndex, 0, draggedItem);
                 
-                // 保存并更新表格
                 saveFundList();
                 renderTable();
+                renderCards();
             }
             
             return false;
@@ -705,9 +1015,15 @@
                 row.classList.remove('dragging');
                 row.classList.remove('drag-over');
             });
+            
+            const cards = document.querySelectorAll('.fund-card');
+            cards.forEach(card => {
+                card.classList.remove('dragging');
+                card.classList.remove('drag-over');
+            });
         }
 
-        // 开始自动刷新（2分钟 = 120秒）
+        // 开始自动刷新
         function startAutoRefresh() {
             if (refreshInterval) clearInterval(refreshInterval);
             
@@ -716,7 +1032,7 @@
                 if (isTradingTime() && !isLoading) {
                     refreshAll();
                 }
-            }, 120000); // 120000ms = 2分钟
+            }, 120000);
         }
 
         // 停止自动刷新
@@ -735,10 +1051,8 @@
             const hour = now.getHours();
             const minute = now.getMinutes();
             
-            // 周末不刷新
             if (day === 0 || day === 6) return false;
             
-            // 交易时间：9:30-11:30, 13:00-15:00
             const time = hour * 100 + minute;
             return (time >= 930 && time <= 1130) || (time >= 1300 && time <= 1500);
         }
