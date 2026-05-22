@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>基金实时估值跟踪器 v6.0</title>
+    <title>基金实时估值</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f6fa;
             min-height: 100vh;
             padding: 10px;
         }
@@ -22,31 +22,52 @@
             max-width: 1200px;
             margin: 0 auto;
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             overflow: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #4a6cf7;
             color: white;
-            padding: 20px;
+            padding: 16px 20px;
             text-align: center;
         }
 
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 8px;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
         }
 
         .header p {
-            opacity: 0.9;
+            opacity: 0.85;
             font-size: 12px;
         }
 
+        .error-banner {
+            padding: 10px 15px;
+            background: #fee;
+            color: #c33;
+            border-bottom: 1px solid #fcc;
+            display: none;
+            font-size: 13px;
+        }
+
+        .error-banner.show {
+            display: block;
+        }
+
+        .error-banner .close-btn {
+            float: right;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
         .controls {
-            padding: 15px;
-            background: #f8f9fa;
+            padding: 12px 15px;
+            background: #fafbfc;
             border-bottom: 1px solid #e9ecef;
             display: flex;
             gap: 8px;
@@ -63,49 +84,44 @@
 
         .input-group input {
             flex: 1;
-            padding: 12px 15px;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
             font-size: 16px;
-            transition: border-color 0.3s;
+            transition: border-color 0.2s;
         }
 
         .input-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #4a6cf7;
         }
 
         button {
-            padding: 12px 20px;
+            padding: 10px 16px;
             border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
+            transition: background 0.2s;
         }
 
         .btn-add {
-            background: #28a745;
+            background: #4a6cf7;
             color: white;
         }
 
         .btn-add:hover {
-            background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(40,167,69,0.4);
+            background: #3a5ce7;
         }
 
         .btn-refresh {
-            background: #007bff;
+            background: #6c757d;
             color: white;
         }
 
         .btn-refresh:hover {
-            background: #0056b3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,123,255,0.4);
+            background: #5a6268;
         }
 
         .btn-clear {
@@ -115,15 +131,13 @@
 
         .btn-clear:hover {
             background: #c82333;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(220,53,69,0.4);
         }
 
         .status-bar {
-            padding: 12px 15px;
-            background: #e9ecef;
+            padding: 10px 15px;
+            background: #f8f9fa;
             font-size: 12px;
-            color: #495057;
+            color: #666;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -133,25 +147,7 @@
 
         .status-bar .time {
             font-weight: 600;
-            color: #667eea;
-        }
-
-        .error-banner {
-            padding: 12px 15px;
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-            display: none;
-        }
-
-        .error-banner.show {
-            display: block;
-        }
-
-        .error-banner .close-btn {
-            float: right;
-            cursor: pointer;
-            font-weight: bold;
+            color: #4a6cf7;
         }
 
         /* 桌面端：表格布局 */
@@ -168,69 +164,46 @@
         thead {
             background: #495057;
             color: white;
-            position: sticky;
-            top: 0;
-            z-index: 10;
         }
 
         th {
-            padding: 12px;
+            padding: 10px 12px;
             text-align: left;
             font-weight: 600;
             font-size: 13px;
         }
 
         tbody tr {
-            border-bottom: 1px solid #e9ecef;
-            transition: background 0.2s;
-            cursor: move;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
         }
 
         tbody tr:hover {
             background: #f8f9fa;
         }
 
-        tbody tr.dragging {
-            opacity: 0.5;
-            background: #fff3cd;
-        }
-
-        tbody tr.drag-over {
-            border-top: 3px solid #667eea;
-        }
-
         tbody tr.updating {
-            animation: flash 0.5s;
+            animation: flash 0.4s;
         }
 
         @keyframes flash {
             0%, 100% { background: white; }
-            50% { background: #fff3cd; }
+            50% { background: #e8f0fe; }
         }
 
         td {
-            padding: 12px;
+            padding: 10px 12px;
             font-size: 13px;
-        }
-
-        .drag-handle {
-            color: #adb5bd;
-            cursor: move;
-            user-select: none;
-        }
-
-        .drag-handle:hover {
-            color: #495057;
         }
 
         .fund-code {
             font-weight: 600;
-            color: #667eea;
+            color: #4a6cf7;
         }
 
         .fund-name {
-            color: #495057;
-            max-width: 150px;
+            color: #333;
+            max-width: 140px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -256,41 +229,35 @@
         }
 
         .delete-btn {
-            padding: 6px 12px;
+            padding: 5px 10px;
             background: #dc3545;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-size: 12px;
-            transition: all 0.2s;
-        }
-
-        .delete-btn:hover {
-            background: #c82333;
-            transform: scale(1.05);
         }
 
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: #6c757d;
+            color: #999;
         }
 
         .loading {
             text-align: center;
-            padding: 40px;
-            color: #6c757d;
+            padding: 30px;
+            color: #999;
         }
 
         .spinner {
             display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4a6cf7;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
 
         @keyframes spin {
@@ -303,124 +270,88 @@
             font-size: 12px;
         }
 
-        /* 移动端：卡片布局 */
+        /* 移动端优化 */
         @media (max-width: 768px) {
             body {
-                padding: 5px;
+                padding: 0;
+                background: white;
+            }
+
+            .container {
+                border-radius: 0;
+                box-shadow: none;
             }
 
             .header {
-                padding: 15px;
+                padding: 12px 15px;
             }
 
             .header h1 {
-                font-size: 20px;
+                font-size: 17px;
             }
 
+            /* 移动端隐藏添加栏 */
             .controls {
-                flex-direction: column;
-                padding: 10px;
-            }
-
-            .input-group {
-                min-width: 100%;
-            }
-
-            .input-group input {
-                font-size: 16px;
-            }
-
-            button {
-                width: 100%;
-                padding: 14px;
-                font-size: 16px;
+                display: none;
             }
 
             .status-bar {
-                flex-direction: column;
-                align-items: flex-start;
+                padding: 8px 12px;
+                font-size: 11px;
             }
 
+            /* 移动端：卡片布局 */
             .table-container {
                 display: none;
             }
 
             .cards-container {
                 display: block;
-                padding: 10px;
+                padding: 8px;
             }
 
             .fund-card {
-                background: white;
-                border: 1px solid #e9ecef;
-                border-radius: 12px;
-                padding: 15px;
-                margin-bottom: 10px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                position: relative;
-            }
-
-            .fund-card.dragging {
-                opacity: 0.5;
-                background: #fff3cd;
-            }
-
-            .fund-card.drag-over {
-                border-top: 3px solid #667eea;
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 12px;
+                margin-bottom: 8px;
             }
 
             .card-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
             }
 
             .card-fund-code {
                 font-weight: 700;
-                font-size: 16px;
-                color: #667eea;
-            }
-
-            .card-drag-handle {
-                color: #adb5bd;
-                cursor: move;
-                font-size: 18px;
+                font-size: 15px;
+                color: #4a6cf7;
             }
 
             .card-fund-name {
-                font-size: 14px;
-                color: #495057;
-                margin-bottom: 10px;
+                font-size: 13px;
+                color: #666;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
 
-            .card-data {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-                margin-bottom: 10px;
-            }
-
-            .card-data-item {
-                background: #f8f9fa;
-                padding: 8px;
-                border-radius: 6px;
-                text-align: center;
-            }
-
-            .card-data-label {
-                font-size: 11px;
-                color: #6c757d;
-                margin-bottom: 4px;
-            }
-
-            .card-data-value {
-                font-size: 14px;
-                font-weight: 600;
+            .card-growth {
+                font-size: 28px;
+                font-weight: 800;
                 font-family: "Courier New", monospace;
+                text-align: center;
+                margin: 10px 0;
+            }
+
+            .card-growth.positive {
+                color: #dc3545;
+            }
+
+            .card-growth.negative {
+                color: #28a745;
             }
 
             .card-footer {
@@ -428,22 +359,24 @@
                 justify-content: space-between;
                 align-items: center;
                 font-size: 11px;
-                color: #6c757d;
+                color: #999;
+                margin-top: 8px;
             }
 
             .card-delete-btn {
-                padding: 8px 16px;
+                width: 100%;
+                padding: 8px;
                 background: #dc3545;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 cursor: pointer;
-                font-size: 14px;
-                width: 100%;
-                margin-top: 10px;
+                font-size: 13px;
+                margin-top: 8px;
             }
         }
 
+        /* 桌面端：隐藏卡片 */
         @media (min-width: 769px) {
             .cards-container {
                 display: none;
@@ -454,8 +387,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 基金实时估值跟踪器 v6.0</h1>
-            <p>✨ 支持拖拽排序 · 移动端适配 · Supabase云存储</p>
+            <h1>📊 基金实时估值</h1>
+            <p>数据来源：天天基金网</p>
         </div>
 
         <div class="error-banner" id="errorBanner">
@@ -463,6 +396,7 @@
             <span id="errorMessage"></span>
         </div>
 
+        <!-- 桌面端：显示添加栏 -->
         <div class="controls">
             <div class="input-group">
                 <input 
@@ -473,31 +407,31 @@
                     pattern="[0-9]*"
                     onkeypress="if(event.key==='Enter') addFund()"
                 >
-                <button class="btn-add" onclick="addFund()">➕ 添加</button>
+                <button class="btn-add" onclick="addFund()">添加</button>
             </div>
-            <button class="btn-refresh" onclick="refreshAll()">🔄 刷新</button>
-            <button class="btn-clear" onclick="clearAll()">🗑️ 清空</button>
+            <button class="btn-refresh" onclick="refreshAll()">刷新</button>
+            <button class="btn-clear" onclick="clearAll()">清空</button>
         </div>
 
         <div class="status-bar">
             <div>
                 <span>📅 交易日：</span>
                 <span class="time" id="tradingDate">--</span>
-                <span style="margin-left: 10px;">⏰ 当前：</span>
+                <span style="margin-left: 8px;">⏰</span>
                 <span class="time" id="currentTime">--:--:--</span>
             </div>
             <div>
                 最后更新：<span id="lastUpdateTime" class="time">--</span>
-                <span style="margin-left: 10px; color: #6c757d;">|</span>
-                <span style="margin-left: 10px; font-size: 11px; color: #6c757d;">自动刷新：2分钟</span>
+                <span style="margin-left: 8px; color: #999;">|</span>
+                <span style="margin-left: 8px; font-size: 11px; color: #999;">1分钟自动刷新</span>
             </div>
         </div>
 
+        <!-- 桌面端：表格布局 -->
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 40px;">⇅</th>
                         <th>序号</th>
                         <th>基金代码</th>
                         <th>基金名称</th>
@@ -510,10 +444,9 @@
                 </thead>
                 <tbody id="fundTableBody">
                     <tr class="empty-state-row">
-                        <td colspan="9">
+                        <td colspan="8">
                             <div class="empty-state">
-                                <p><strong>暂无基金</strong></p>
-                                <p>在上方输入框中添加基金代码开始跟踪</p>
+                                <p>暂无基金，添加后跟踪</p>
                             </div>
                         </td>
                     </tr>
@@ -521,63 +454,50 @@
             </table>
         </div>
 
+        <!-- 移动端：卡片布局 -->
         <div class="cards-container" id="fundCardsContainer">
             <div class="empty-state">
-                <p><strong>暂无基金</strong></p>
-                <p>在上方输入框中添加基金代码开始跟踪</p>
+                <p>暂无基金</p>
             </div>
         </div>
 
         <div class="loading" id="loadingIndicator" style="display: none;">
             <div class="spinner"></div>
-            <p style="margin-top: 10px;">正在获取数据...</p>
+            <p style="margin-top: 8px;">加载中...</p>
         </div>
     </div>
 
     <script>
-        // 基金列表（只从服务器加载）
         let fundList = [];
         let refreshInterval = null;
         let isLoading = false;
-        let dragSrcEl = null;
 
-        // 显示错误
         function showError(message) {
             document.getElementById('errorMessage').textContent = message;
             document.getElementById('errorBanner').classList.add('show');
         }
 
-        // 关闭错误提示
         function closeError() {
             document.getElementById('errorBanner').classList.remove('show');
         }
 
-        // 初始化
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('页面加载完成，开始初始化...');
+            console.log('页面加载完成');
             loadFundList();
             updateTime();
             setInterval(updateTime, 1000);
         });
 
-        // 加载基金列表（只从服务器API）
         async function loadFundList() {
             try {
-                console.log('开始从服务器加载基金列表...');
                 const response = await fetch('/api/funds');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
                 const result = await response.json();
-                
-                if (result.code !== 0) {
-                    throw new Error(result.error || 'API返回错误');
-                }
+                if (result.code !== 0) throw new Error(result.error);
                 
                 fundList = result.data || [];
-                console.log('从服务器加载基金列表成功：', fundList);
+                console.log('基金列表：', fundList);
                 
                 renderTable();
                 renderCards();
@@ -586,54 +506,34 @@
                     refreshAll();
                     startAutoRefresh();
                 }
-                
             } catch (error) {
-                console.error('从服务器加载基金列表失败：', error);
-                showError('加载基金列表失败：' + error.message);
-                fundList = [];
-                renderTable();
-                renderCards();
+                console.error('加载失败：', error);
+                showError('加载失败：' + error.message);
             }
         }
 
-        // 保存基金列表（只保存到服务器API）
         async function saveFundList() {
             try {
-                console.log('开始保存基金列表到服务器...', fundList);
-                
                 const response = await fetch('/api/funds', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(fundList)
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
                 const result = await response.json();
+                if (result.code !== 0) throw new Error(result.error);
                 
-                if (result.code !== 0) {
-                    throw new Error(result.error || 'API返回错误');
-                }
-                
-                console.log('基金列表已保存到服务器');
-                
+                console.log('保存成功');
             } catch (error) {
-                console.error('保存基金列表到服务器失败：', error);
-                showError('保存基金列表失败：' + error.message);
+                console.error('保存失败：', error);
+                showError('保存失败：' + error.message);
                 throw error;
             }
         }
 
-        // 添加基金
         async function addFund() {
-            if (isLoading) {
-                alert('正在加载中，请稍候...');
-                return;
-            }
+            if (isLoading) return;
 
             const input = document.getElementById('fundCodeInput');
             const code = input.value.trim();
@@ -648,14 +548,13 @@
                 return;
             }
 
-            console.log('开始添加基金：', code);
+            console.log('添加基金：', code);
             showLoading(true);
             isLoading = true;
             
             try {
                 const data = await fetchFundData(code);
                 if (data) {
-                    console.log('基金数据获取成功：', data);
                     fundList.push(code);
                     await saveFundList();
                     renderTable();
@@ -664,77 +563,56 @@
                     refreshAll();
                     startAutoRefresh();
                 } else {
-                    alert('基金代码无效或无法获取数据！');
+                    alert('基金代码无效！');
                 }
             } catch (error) {
-                console.error('添加基金失败：', error);
-                alert('获取基金数据失败：' + error.message);
+                alert('添加失败：' + error.message);
             } finally {
                 showLoading(false);
                 isLoading = false;
             }
         }
 
-        // 删除基金
         async function deleteFund(index) {
-            if (confirm('确定要删除这只基金吗？')) {
-                fundList.splice(index, 1);
-                try {
-                    await saveFundList();
-                    renderTable();
-                    renderCards();
-                    
-                    if (fundList.length === 0) {
-                        stopAutoRefresh();
-                    }
-                } catch (error) {
-                    alert('删除基金失败：' + error.message);
-                }
+            if (!confirm('确定删除？')) return;
+            
+            fundList.splice(index, 1);
+            try {
+                await saveFundList();
+                renderTable();
+                renderCards();
+                if (fundList.length === 0) stopAutoRefresh();
+            } catch (error) {
+                alert('删除失败：' + error.message);
             }
         }
 
-        // 清空列表
         async function clearAll() {
-            if (fundList.length === 0) {
-                alert('列表已为空！');
-                return;
-            }
-
-            if (confirm('确定要清空所有基金吗？此操作不可恢复！')) {
-                fundList = [];
-                try {
-                    await saveFundList();
-                    renderTable();
-                    renderCards();
-                    stopAutoRefresh();
-                } catch (error) {
-                    alert('清空基金列表失败：' + error.message);
-                }
+            if (fundList.length === 0) return;
+            if (!confirm('确定清空所有基金？')) return;
+            
+            fundList = [];
+            try {
+                await saveFundList();
+                renderTable();
+                renderCards();
+                stopAutoRefresh();
+            } catch (error) {
+                alert('清空失败：' + error.message);
             }
         }
 
-        // 获取基金数据（使用Vercel API代理）
         async function fetchFundData(fundCode) {
             try {
-                console.log('开始获取基金数据：', fundCode);
-                
                 const response = await fetch(`/api/fund?code=${fundCode}`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
                 const result = await response.json();
-                
-                if (result.code !== 0) {
-                    throw new Error(result.error || 'API返回错误');
-                }
+                if (result.code !== 0) throw new Error(result.error);
                 
                 const data = result.data;
                 
-                console.log('API返回数据：', data);
-                
-                const output = {
+                return {
                     code: data.fundcode,
                     name: data.name,
                     nav: parseFloat(data.dwjz),
@@ -742,36 +620,27 @@
                     growth: data.gszzl ? parseFloat(data.gszzl) : 0,
                     time: data.gztime
                 };
-                
-                return output;
-                
             } catch (error) {
                 console.error('获取基金数据失败：', error);
                 throw error;
             }
         }
 
-        // 刷新所有基金
         async function refreshAll() {
-            if (fundList.length === 0) return;
-            if (isLoading) return;
+            if (fundList.length === 0 || isLoading) return;
             
-            console.log('开始刷新所有基金...');
+            console.log('刷新基金...');
             showLoading(true);
             isLoading = true;
             
             for (let i = 0; i < fundList.length; i++) {
-                const code = fundList[i];
-                console.log(`刷新基金 ${i+1}/${fundList.length}：`, code);
-                
                 try {
-                    const data = await fetchFundData(code);
+                    const data = await fetchFundData(fundList[i]);
                     if (data) {
                         updateRow(i, data);
                         updateCard(i, data);
                     }
                 } catch (error) {
-                    console.error('刷新基金失败：', code, error);
                     updateRowError(i);
                     updateCardError(i);
                 }
@@ -782,88 +651,60 @@
             isLoading = false;
         }
 
-        // 更新表格行
         function updateRow(index, data) {
-            const tbody = document.getElementById('fundTableBody');
-            const rows = tbody.querySelectorAll('tr:not(.empty-state-row)');
-            
+            const rows = document.querySelectorAll('#fundTableBody tr:not(.empty-state-row)');
             if (index >= rows.length) return;
             
             const row = rows[index];
             row.classList.add('updating');
             
-            row.cells[3].textContent = data.name;
-            row.cells[4].textContent = data.nav.toFixed(4);
+            row.cells[2].textContent = data.name;
+            row.cells[3].textContent = data.nav.toFixed(4);
             
-            if (data.estimatedNav !== null && data.estimatedNav !== undefined) {
-                row.cells[5].textContent = data.estimatedNav.toFixed(4);
-                
-                const growthCell = row.cells[6];
-                growthCell.textContent = data.growth.toFixed(2) + '%';
-                growthCell.className = 'growth ' + (data.growth >= 0 ? 'positive' : 'negative');
-                
-                row.cells[7].textContent = data.time;
+            if (data.estimatedNav !== null) {
+                row.cells[4].textContent = data.estimatedNav.toFixed(4);
+                row.cells[5].textContent = data.growth.toFixed(2) + '%';
+                row.cells[5].className = 'growth ' + (data.growth >= 0 ? 'positive' : 'negative');
+                row.cells[6].textContent = data.time;
             } else {
-                row.cells[5].textContent = '暂无';
-                row.cells[6].textContent = '--';
-                row.cells[6].className = 'growth';
-                row.cells[7].textContent = '非交易时间';
+                row.cells[4].textContent = '暂无';
+                row.cells[5].textContent = '--';
+                row.cells[5].className = 'growth';
+                row.cells[6].textContent = '非交易时间';
             }
             
-            setTimeout(() => row.classList.remove('updating'), 500);
+            setTimeout(() => row.classList.remove('updating'), 400);
         }
 
-        // 更新卡片
         function updateCard(index, data) {
-            const container = document.getElementById('fundCardsContainer');
-            const cards = container.querySelectorAll('.fund-card');
-            
+            const cards = document.querySelectorAll('.fund-card');
             if (index >= cards.length) return;
             
             const card = cards[index];
-            card.classList.add('updating');
-            
             card.querySelector('.card-fund-name').textContent = data.name;
-            card.querySelector('.card-data-item:nth-child(1) .card-data-value').textContent = data.nav.toFixed(4);
             
-            if (data.estimatedNav !== null && data.estimatedNav !== undefined) {
-                card.querySelector('.card-data-item:nth-child(2) .card-data-value').textContent = data.estimatedNav.toFixed(4);
-                
-                const growthValue = card.querySelector('.card-data-item:nth-child(3) .card-data-value');
-                growthValue.textContent = data.growth.toFixed(2) + '%';
-                growthValue.style.color = data.growth >= 0 ? '#dc3545' : '#28a745';
-                
+            if (data.estimatedNav !== null) {
+                card.querySelector('.card-growth').textContent = (data.growth >= 0 ? '+' : '') + data.growth.toFixed(2) + '%';
+                card.querySelector('.card-growth').className = 'card-growth ' + (data.growth >= 0 ? 'positive' : 'negative');
                 card.querySelector('.card-footer').innerHTML = `<span>${data.time}</span><span>估值时间</span>`;
             } else {
-                card.querySelector('.card-data-item:nth-child(2) .card-data-value').textContent = '暂无';
-                card.querySelector('.card-data-item:nth-child(3) .card-data-value').textContent = '--';
-                card.querySelector('.card-footer').innerHTML = `<span>非交易时间</span><span>--</span>`;
+                card.querySelector('.card-growth').textContent = '--';
+                card.querySelector('.card-growth').className = 'card-growth';
+                card.querySelector('.card-footer').innerHTML = `<span>非交易时间</span>`;
             }
-            
-            setTimeout(() => card.classList.remove('updating'), 500);
         }
 
-        // 更新行（错误）
         function updateRowError(index) {
-            const tbody = document.getElementById('fundTableBody');
-            const rows = tbody.querySelectorAll('tr:not(.empty-state-row)');
-            
+            const rows = document.querySelectorAll('#fundTableBody tr:not(.empty-state-row)');
             if (index >= rows.length) return;
             
             const row = rows[index];
-            row.cells[3].textContent = '获取失败';
-            row.cells[3].className = 'error';
-            row.cells[4].textContent = '--';
-            row.cells[5].textContent = '--';
-            row.cells[6].textContent = '--';
-            row.cells[7].textContent = '--';
+            row.cells[2].textContent = '获取失败';
+            row.cells[2].className = 'error';
         }
 
-        // 更新卡片（错误）
         function updateCardError(index) {
-            const container = document.getElementById('fundCardsContainer');
-            const cards = container.querySelectorAll('.fund-card');
-            
+            const cards = document.querySelectorAll('.fund-card');
             if (index >= cards.length) return;
             
             const card = cards[index];
@@ -871,21 +712,11 @@
             card.querySelector('.card-fund-name').className = 'card-fund-name error';
         }
 
-        // 渲染表格
         function renderTable() {
             const tbody = document.getElementById('fundTableBody');
             
             if (fundList.length === 0) {
-                tbody.innerHTML = `
-                    <tr class="empty-state-row">
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <p><strong>暂无基金</strong></p>
-                                <p>在上方输入框中添加基金代码开始跟踪</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                tbody.innerHTML = '<tr class="empty-state-row"><td colspan="8"><div class="empty-state"><p>暂无基金，添加后跟踪</p></div></td></tr>';
                 return;
             }
             
@@ -893,11 +724,7 @@
             
             fundList.forEach((code, index) => {
                 const row = document.createElement('tr');
-                row.draggable = true;
-                row.dataset.index = index;
-                
                 row.innerHTML = `
-                    <td class="drag-handle">☰</td>
                     <td>${index + 1}</td>
                     <td class="fund-code">${code}</td>
                     <td class="fund-name">加载中...</td>
@@ -907,29 +734,15 @@
                     <td>--</td>
                     <td><button class="delete-btn" onclick="deleteFund(${index})">删除</button></td>
                 `;
-                
-                row.addEventListener('dragstart', handleDragStart);
-                row.addEventListener('dragover', handleDragOver);
-                row.addEventListener('dragenter', handleDragEnter);
-                row.addEventListener('dragleave', handleDragLeave);
-                row.addEventListener('drop', handleDrop);
-                row.addEventListener('dragend', handleDragEnd);
-                
                 tbody.appendChild(row);
             });
         }
 
-        // 渲染卡片（移动端）
         function renderCards() {
             const container = document.getElementById('fundCardsContainer');
             
             if (fundList.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <p><strong>暂无基金</strong></p>
-                        <p>在上方输入框中添加基金代码开始跟踪</p>
-                    </div>
-                `;
+                container.innerHTML = '<div class="empty-state"><p>暂无基金</p></div>';
                 return;
             }
             
@@ -938,33 +751,13 @@
             fundList.forEach((code, index) => {
                 const card = document.createElement('div');
                 card.className = 'fund-card';
-                card.draggable = true;
-                card.dataset.index = index;
                 
                 card.innerHTML = `
                     <div class="card-header">
                         <span class="card-fund-code">${code}</span>
-                        <span class="card-drag-handle">☰</span>
+                        <span class="card-fund-name">加载中...</span>
                     </div>
-                    <div class="card-fund-name">加载中...</div>
-                    <div class="card-data">
-                        <div class="card-data-item">
-                            <div class="card-data-label">昨日净值</div>
-                            <div class="card-data-value">--</div>
-                        </div>
-                        <div class="card-data-item">
-                            <div class="card-data-label">估算净值</div>
-                            <div class="card-data-value">--</div>
-                        </div>
-                        <div class="card-data-item">
-                            <div class="card-data-label">估算涨幅</div>
-                            <div class="card-data-value">--</div>
-                        </div>
-                        <div class="card-data-item">
-                            <div class="card-data-label">状态</div>
-                            <div class="card-data-value">--</div>
-                        </div>
-                    </div>
+                    <div class="card-growth">--</div>
                     <div class="card-footer">
                         <span>--</span>
                         <span>估值时间</span>
@@ -972,100 +765,28 @@
                     <button class="card-delete-btn" onclick="deleteFund(${index})">删除</button>
                 `;
                 
-                card.addEventListener('dragstart', handleDragStart);
-                card.addEventListener('dragover', handleDragOver);
-                card.addEventListener('dragenter', handleDragEnter);
-                card.addEventListener('dragleave', handleDragLeave);
-                card.addEventListener('drop', handleDrop);
-                card.addEventListener('dragend', handleDragEnd);
-                
                 container.appendChild(card);
             });
         }
 
-        // 拖拽功能
-        function handleDragStart(e) {
-            dragSrcEl = this;
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', this.innerHTML);
-        }
-
-        function handleDragOver(e) {
-            if (e.preventDefault) {
-                e.preventDefault();
-            }
-            e.dataTransfer.dropEffect = 'move';
-            return false;
-        }
-
-        function handleDragEnter(e) {
-            this.classList.add('drag-over');
-        }
-
-        function handleDragLeave(e) {
-            this.classList.remove('drag-over');
-        }
-
-        function handleDrop(e) {
-            if (e.stopPropagation) {
-                e.stopPropagation();
-            }
-            
-            if (dragSrcEl !== this) {
-                const srcIndex = parseInt(dragSrcEl.dataset.index);
-                const destIndex = parseInt(this.dataset.index);
-                
-                console.log(`拖拽排序：${srcIndex} → ${destIndex}`);
-                
-                const draggedItem = fundList[srcIndex];
-                fundList.splice(srcIndex, 1);
-                fundList.splice(destIndex, 0, draggedItem);
-                
-                saveFundList();
-                renderTable();
-                renderCards();
-            }
-            
-            return false;
-        }
-
-        function handleDragEnd(e) {
-            const rows = document.querySelectorAll('#fundTableBody tr:not(.empty-state-row)');
-            rows.forEach(row => {
-                row.classList.remove('dragging');
-                row.classList.remove('drag-over');
-            });
-            
-            const cards = document.querySelectorAll('.fund-card');
-            cards.forEach(card => {
-                card.classList.remove('dragging');
-                card.classList.remove('drag-over');
-            });
-        }
-
-        // 开始自动刷新
         function startAutoRefresh() {
             if (refreshInterval) clearInterval(refreshInterval);
             
-            console.log('启动自动刷新（每2分钟）...');
+            console.log('启动自动刷新（1分钟）');
             refreshInterval = setInterval(() => {
                 if (isTradingTime() && !isLoading) {
                     refreshAll();
                 }
-            }, 120000);
+            }, 60000); // 60000ms = 1分钟
         }
 
-        // 停止自动刷新
         function stopAutoRefresh() {
             if (refreshInterval) {
-                console.log('停止自动刷新');
                 clearInterval(refreshInterval);
                 refreshInterval = null;
             }
         }
 
-        // 判断是否在交易时间
         function isTradingTime() {
             const now = new Date();
             const day = now.getDay();
@@ -1078,14 +799,12 @@
             return (time >= 930 && time <= 1130) || (time >= 1300 && time <= 1500);
         }
 
-        // 更新时间显示
         function updateTime() {
             const now = new Date();
             document.getElementById('currentTime').textContent = now.toLocaleTimeString('zh-CN');
             document.getElementById('tradingDate').textContent = now.toLocaleDateString('zh-CN');
         }
 
-        // 显示/隐藏加载指示器
         function showLoading(show) {
             document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
         }
