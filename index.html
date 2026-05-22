@@ -114,6 +114,15 @@
             background: #3a5ce7;
         }
 
+        .btn-save-order {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-save-order:hover {
+            background: #218838;
+        }
+
         .btn-refresh {
             background: #6c757d;
             color: white;
@@ -220,7 +229,9 @@
         .growth {
             font-weight: 700;
             font-size: 14px;
-            font-family: "Courier New", monospace;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.3px;
         }
 
         .growth.positive {
@@ -325,18 +336,15 @@
                 flex: 1;
             }
 
-            .card-fund-code {
+            .card-fund-name {
                 font-weight: 700;
                 font-size: 14px;
-                color: #4a6cf7;
+                color: #333;
             }
 
-            .card-fund-name {
+            .card-fund-code {
                 font-size: 11px;
-                color: #666;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                color: #4a6cf7;
                 margin-top: 2px;
             }
 
@@ -350,6 +358,7 @@
                 font-weight: 600;
                 font-family: "SF Mono", "Menlo", "Consolas", monospace;
                 font-variant-numeric: tabular-nums;
+                letter-spacing: -0.3px;
             }
 
             .card-growth.positive {
@@ -364,11 +373,7 @@
                 font-size: 10px;
                 color: #999;
                 margin-top: 2px;
-                font-family: "SF Mono", "Consolas", monospace;
-            }
-
-            .card-delete-btn {
-                display: none;
+                font-family: "SF Mono", "Menlo", monospace;
             }
         }
 
@@ -403,6 +408,7 @@
                 >
                 <button class="btn-add" onclick="addFund()">添加</button>
             </div>
+            <button class="btn-save-order" onclick="saveOrder()">保存顺序</button>
             <button class="btn-refresh" onclick="manualRefresh()">强制刷新</button>
             <button class="btn-clear" onclick="clearAll()">清空</button>
         </div>
@@ -515,7 +521,7 @@
             }
         }
 
-        // 保存基金代码列表
+        // 保存基金代码列表（含顺序）
         async function saveFundList() {
             try {
                 const response = await fetch('/api/funds', {
@@ -533,6 +539,16 @@
                 console.error('保存失败：', error);
                 showError('保存失败：' + error.message);
                 throw error;
+            }
+        }
+
+        // 保存当前顺序到数据库
+        async function saveOrder() {
+            try {
+                await saveFundList();
+                alert('顺序已保存！');
+            } catch (error) {
+                alert('保存失败：' + error.message);
             }
         }
 
@@ -710,8 +726,8 @@
                 
                 card.innerHTML = `
                     <div class="card-left">
-                        <div class="card-fund-code">${code}</div>
                         <div class="card-fund-name">${data ? data.name : '加载中...'}</div>
+                        <div class="card-fund-code">${code}</div>
                     </div>
                     <div class="card-right">
                         <div class="card-growth ${data && data.growth >= 0 ? 'positive' : data && data.growth < 0 ? 'negative' : ''}">${data ? (data.growth >= 0 ? '+' : '') + data.growth.toFixed(2) + '%' : '--'}</div>
@@ -729,7 +745,7 @@
             console.log('启动定时任务（每30秒）');
             refreshInterval = setInterval(() => {
                 if (isTradingTime() && !isLoading) {
-                    manualRefresh();
+                    loadFundList();  // 从缓存/API更新
                 }
             }, 30000);
         }

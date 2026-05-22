@@ -9,7 +9,7 @@ const DEFAULT_USER_ID = 'default';
 
 // 内存缓存
 const fundDataCache = {};
-const CACHE_TTL = 60000; // 缓存1分钟
+const CACHE_TTL = 120000; // 缓存2分钟
 
 // 从天天基金API获取基金数据（带缓存）
 async function fetchFundDataFromAPI(fundCode) {
