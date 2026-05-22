@@ -150,6 +150,16 @@
             color: #4a6cf7;
         }
 
+        .cache-indicator {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e8f0fe;
+            color: #4a6cf7;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
         /* 桌面端：表格布局 */
         .table-container {
             overflow-x: auto;
@@ -283,11 +293,15 @@
             }
 
             .header {
-                padding: 12px 15px;
+                padding: 10px 12px;
             }
 
             .header h1 {
-                font-size: 17px;
+                font-size: 16px;
+            }
+
+            .header p {
+                font-size: 11px;
             }
 
             /* 移动端隐藏添加栏 */
@@ -296,8 +310,13 @@
             }
 
             .status-bar {
-                padding: 8px 12px;
-                font-size: 11px;
+                padding: 6px 10px;
+                font-size: 10px;
+            }
+
+            .cache-indicator {
+                font-size: 10px;
+                padding: 2px 6px;
             }
 
             /* 移动端：卡片布局 */
@@ -307,43 +326,47 @@
 
             .cards-container {
                 display: block;
-                padding: 8px;
+                padding: 4px;
             }
 
             .fund-card {
                 background: #f8f9fa;
-                border-radius: 8px;
-                padding: 12px;
-                margin-bottom: 8px;
+                border-radius: 6px;
+                padding: 8px 10px;
+                margin-bottom: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
             }
 
-            .card-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 8px;
+            .card-left {
+                flex: 1;
             }
 
             .card-fund-code {
                 font-weight: 700;
-                font-size: 15px;
+                font-size: 14px;
                 color: #4a6cf7;
             }
 
             .card-fund-name {
-                font-size: 13px;
+                font-size: 11px;
                 color: #666;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+                margin-top: 2px;
+            }
+
+            .card-right {
+                text-align: right;
+                margin-left: 10px;
             }
 
             .card-growth {
-                font-size: 28px;
+                font-size: 20px;
                 font-weight: 800;
                 font-family: "Courier New", monospace;
-                text-align: center;
-                margin: 10px 0;
             }
 
             .card-growth.positive {
@@ -354,25 +377,15 @@
                 color: #28a745;
             }
 
-            .card-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 11px;
+            .card-time {
+                font-size: 10px;
                 color: #999;
-                margin-top: 8px;
+                margin-top: 2px;
             }
 
+            /* 移动端隐藏删除按钮 */
             .card-delete-btn {
-                width: 100%;
-                padding: 8px;
-                background: #dc3545;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 13px;
-                margin-top: 8px;
+                display: none;
             }
         }
 
@@ -409,7 +422,7 @@
                 >
                 <button class="btn-add" onclick="addFund()">添加</button>
             </div>
-            <button class="btn-refresh" onclick="refreshAll()">刷新</button>
+            <button class="btn-refresh" onclick="manualRefresh()">强制刷新</button>
             <button class="btn-clear" onclick="clearAll()">清空</button>
         </div>
 
@@ -421,9 +434,9 @@
                 <span class="time" id="currentTime">--:--:--</span>
             </div>
             <div>
-                最后更新：<span id="lastUpdateTime" class="time">--</span>
-                <span style="margin-left: 8px; color: #999;">|</span>
-                <span style="margin-left: 8px; font-size: 11px; color: #999;">1分钟自动刷新</span>
+                <span>更新：</span>
+                <span id="lastUpdateTime" class="time">--</span>
+                <span id="cacheIndicator" class="cache-indicator" style="display: none;">缓存</span>
             </div>
         </div>
 
@@ -468,8 +481,10 @@
     </div>
 
     <script>
-        let fundList = [];
-        let refreshInterval = null;
+        // 内存缓存：基金代码列表 + 基金数据
+        let fundList = [];           // 基金代码列表（从数据库加载）
+        let fundDataCache = {};      // 基金数据缓存（{ "003567": { name, nav, growth, ... } }）
+        let refreshInterval = null;  // 定时任务
         let isLoading = false;
 
         function showError(message) {
@@ -483,13 +498,15 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             console.log('页面加载完成');
-            loadFundList();
+            loadFundListFromDB();  // 从数据库加载基金代码列表
             updateTime();
             setInterval(updateTime, 1000);
         });
 
-        async function loadFundList() {
+        // 从数据库加载基金代码列表
+        async function loadFundListFromDB() {
             try {
+                console.log('从数据库加载基金代码列表...');
                 const response = await fetch('/api/funds');
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
@@ -497,22 +514,26 @@
                 if (result.code !== 0) throw new Error(result.error);
                 
                 fundList = result.data || [];
-                console.log('基金列表：', fundList);
+                console.log('基金代码列表：', fundList);
                 
-                renderTable();
-                renderCards();
-                
+                // 首次加载：强制从API获取数据
                 if (fundList.length > 0) {
-                    refreshAll();
-                    startAutoRefresh();
+                    await refreshAllFundData(true);  // force=true，强制查API
+                    startAutoRefresh();               // 启动定时任务
+                } else {
+                    renderTable();
+                    renderCards();
                 }
             } catch (error) {
-                console.error('加载失败：', error);
+                console.error('加载基金代码失败：', error);
                 showError('加载失败：' + error.message);
+                renderTable();
+                renderCards();
             }
         }
 
-        async function saveFundList() {
+        // 保存基金代码列表到数据库
+        async function saveFundListToDB() {
             try {
                 const response = await fetch('/api/funds', {
                     method: 'POST',
@@ -524,14 +545,128 @@
                 const result = await response.json();
                 if (result.code !== 0) throw new Error(result.error);
                 
-                console.log('保存成功');
+                console.log('基金代码列表已保存到数据库');
             } catch (error) {
-                console.error('保存失败：', error);
+                console.error('保存基金代码失败：', error);
                 showError('保存失败：' + error.message);
                 throw error;
             }
         }
 
+        // 获取基金数据（支持强制刷新）
+        async function fetchFundData(fundCode, force = false) {
+            try {
+                // 如果不是强制刷新，先检查内存缓存
+                if (!force && fundDataCache[fundCode]) {
+                    console.log(`从内存缓存读取：${fundCode}`);
+                    return fundDataCache[fundCode];
+                }
+
+                console.log(`从API获取：${fundCode} (force=${force})`);
+                
+                // 调用API（force参数告诉后端不走缓存）
+                const url = `/api/fund?code=${fundCode}${force ? '&force=true' : ''}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const result = await response.json();
+                if (result.code !== 0) throw new Error(result.error);
+                
+                const data = result.data;
+                
+                const fundData = {
+                    code: data.fundcode,
+                    name: data.name,
+                    nav: parseFloat(data.dwjz),
+                    estimatedNav: data.gsz ? parseFloat(data.gsz) : null,
+                    growth: data.gszzl ? parseFloat(data.gszzl) : 0,
+                    time: data.gztime
+                };
+                
+                // 更新内存缓存
+                fundDataCache[fundCode] = fundData;
+                
+                return fundData;
+            } catch (error) {
+                console.error('获取基金数据失败：', fundCode, error);
+                throw error;
+            }
+        }
+
+        // 刷新所有基金数据（支持强制刷新）
+        async function refreshAllFundData(force = false) {
+            if (fundList.length === 0) return;
+            
+            console.log(`刷新所有基金数据 (force=${force})...`);
+            
+            if (!force) {
+                showLoading(true);
+            }
+            isLoading = true;
+            
+            for (let i = 0; i < fundList.length; i++) {
+                try {
+                    const data = await fetchFundData(fundList[i], force);
+                    if (data) {
+                        updateRow(i, data);
+                        updateCard(i, data);
+                    }
+                } catch (error) {
+                    updateRowError(i);
+                    updateCardError(i);
+                }
+            }
+            
+            document.getElementById('lastUpdateTime').textContent = new Date().toLocaleTimeString('zh-CN');
+            
+            // 显示缓存标识
+            if (!force) {
+                document.getElementById('cacheIndicator').style.display = 'inline-block';
+            } else {
+                document.getElementById('cacheIndicator').style.display = 'none';
+            }
+            
+            showLoading(false);
+            isLoading = false;
+        }
+
+        // 手动刷新（强制查API）
+        async function manualRefresh() {
+            console.log('手动刷新（强制查API）');
+            await refreshAllFundData(true);  // force=true
+        }
+
+        // 自动刷新（定时任务，每30秒）
+        async function autoRefresh() {
+            console.log('定时任务：刷新基金数据（从数据库加载代码 + 查API）');
+            
+            // 1. 从数据库加载最新的基金代码列表
+            await loadFundListFromDB();
+            
+            // 2. 刷新基金数据（强制查API）
+            await refreshAllFundData(true);
+        }
+
+        // 启动定时任务（30秒）
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            
+            console.log('启动定时任务（每30秒刷新）');
+            refreshInterval = setInterval(() => {
+                if (isTradingTime() && !isLoading) {
+                    autoRefresh();
+                }
+            }, 30000); // 30000ms = 30秒
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        // 添加基金
         async function addFund() {
             if (isLoading) return;
 
@@ -553,14 +688,13 @@
             isLoading = true;
             
             try {
-                const data = await fetchFundData(code);
+                const data = await fetchFundData(code, true);  // 强制查API
                 if (data) {
                     fundList.push(code);
-                    await saveFundList();
+                    await saveFundListToDB();
                     renderTable();
                     renderCards();
                     input.value = '';
-                    refreshAll();
                     startAutoRefresh();
                 } else {
                     alert('基金代码无效！');
@@ -573,12 +707,13 @@
             }
         }
 
+        // 删除基金
         async function deleteFund(index) {
             if (!confirm('确定删除？')) return;
             
             fundList.splice(index, 1);
             try {
-                await saveFundList();
+                await saveFundListToDB();
                 renderTable();
                 renderCards();
                 if (fundList.length === 0) stopAutoRefresh();
@@ -587,68 +722,21 @@
             }
         }
 
+        // 清空列表
         async function clearAll() {
             if (fundList.length === 0) return;
             if (!confirm('确定清空所有基金？')) return;
             
             fundList = [];
+            fundDataCache = {};  // 清空缓存
             try {
-                await saveFundList();
+                await saveFundListToDB();
                 renderTable();
                 renderCards();
                 stopAutoRefresh();
             } catch (error) {
                 alert('清空失败：' + error.message);
             }
-        }
-
-        async function fetchFundData(fundCode) {
-            try {
-                const response = await fetch(`/api/fund?code=${fundCode}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
-                const result = await response.json();
-                if (result.code !== 0) throw new Error(result.error);
-                
-                const data = result.data;
-                
-                return {
-                    code: data.fundcode,
-                    name: data.name,
-                    nav: parseFloat(data.dwjz),
-                    estimatedNav: data.gsz ? parseFloat(data.gsz) : null,
-                    growth: data.gszzl ? parseFloat(data.gszzl) : 0,
-                    time: data.gztime
-                };
-            } catch (error) {
-                console.error('获取基金数据失败：', error);
-                throw error;
-            }
-        }
-
-        async function refreshAll() {
-            if (fundList.length === 0 || isLoading) return;
-            
-            console.log('刷新基金...');
-            showLoading(true);
-            isLoading = true;
-            
-            for (let i = 0; i < fundList.length; i++) {
-                try {
-                    const data = await fetchFundData(fundList[i]);
-                    if (data) {
-                        updateRow(i, data);
-                        updateCard(i, data);
-                    }
-                } catch (error) {
-                    updateRowError(i);
-                    updateCardError(i);
-                }
-            }
-            
-            document.getElementById('lastUpdateTime').textContent = new Date().toLocaleTimeString('zh-CN');
-            showLoading(false);
-            isLoading = false;
         }
 
         function updateRow(index, data) {
@@ -686,11 +774,11 @@
             if (data.estimatedNav !== null) {
                 card.querySelector('.card-growth').textContent = (data.growth >= 0 ? '+' : '') + data.growth.toFixed(2) + '%';
                 card.querySelector('.card-growth').className = 'card-growth ' + (data.growth >= 0 ? 'positive' : 'negative');
-                card.querySelector('.card-footer').innerHTML = `<span>${data.time}</span><span>估值时间</span>`;
+                card.querySelector('.card-time').textContent = data.time;
             } else {
                 card.querySelector('.card-growth').textContent = '--';
                 card.querySelector('.card-growth').className = 'card-growth';
-                card.querySelector('.card-footer').innerHTML = `<span>非交易时间</span>`;
+                card.querySelector('.card-time').textContent = '非交易时间';
             }
         }
 
@@ -724,14 +812,18 @@
             
             fundList.forEach((code, index) => {
                 const row = document.createElement('tr');
+                
+                // 优先从缓存读取
+                const cachedData = fundDataCache[code];
+                
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td class="fund-code">${code}</td>
-                    <td class="fund-name">加载中...</td>
-                    <td class="nav">--</td>
-                    <td class="nav">--</td>
-                    <td class="growth">--</td>
-                    <td>--</td>
+                    <td class="fund-name">${cachedData ? cachedData.name : '加载中...'}</td>
+                    <td class="nav">${cachedData ? cachedData.nav.toFixed(4) : '--'}</td>
+                    <td class="nav">${cachedData && cachedData.estimatedNav !== null ? cachedData.estimatedNav.toFixed(4) : '--'}</td>
+                    <td class="growth">${cachedData ? (cachedData.growth >= 0 ? '+' : '') + cachedData.growth.toFixed(2) + '%' : '--'}</td>
+                    <td>${cachedData ? cachedData.time : '--'}</td>
                     <td><button class="delete-btn" onclick="deleteFund(${index})">删除</button></td>
                 `;
                 tbody.appendChild(row);
@@ -752,39 +844,23 @@
                 const card = document.createElement('div');
                 card.className = 'fund-card';
                 
+                // 优先从缓存读取
+                const cachedData = fundDataCache[code];
+                
                 card.innerHTML = `
-                    <div class="card-header">
-                        <span class="card-fund-code">${code}</span>
-                        <span class="card-fund-name">加载中...</span>
+                    <div class="card-left">
+                        <div class="card-fund-code">${code}</div>
+                        <div class="card-fund-name">${cachedData ? cachedData.name : '加载中...'}</div>
                     </div>
-                    <div class="card-growth">--</div>
-                    <div class="card-footer">
-                        <span>--</span>
-                        <span>估值时间</span>
+                    <div class="card-right">
+                        <div class="card-growth ${cachedData && cachedData.growth >= 0 ? 'positive' : cachedData && cachedData.growth < 0 ? 'negative' : ''}">${cachedData ? (cachedData.growth >= 0 ? '+' : '') + cachedData.growth.toFixed(2) + '%' : '--'}</div>
+                        <div class="card-time">${cachedData ? cachedData.time : '--'}</div>
                     </div>
                     <button class="card-delete-btn" onclick="deleteFund(${index})">删除</button>
                 `;
                 
                 container.appendChild(card);
             });
-        }
-
-        function startAutoRefresh() {
-            if (refreshInterval) clearInterval(refreshInterval);
-            
-            console.log('启动自动刷新（1分钟）');
-            refreshInterval = setInterval(() => {
-                if (isTradingTime() && !isLoading) {
-                    refreshAll();
-                }
-            }, 60000); // 60000ms = 1分钟
-        }
-
-        function stopAutoRefresh() {
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-                refreshInterval = null;
-            }
         }
 
         function isTradingTime() {
