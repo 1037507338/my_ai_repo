@@ -7,11 +7,28 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const DEFAULT_USER_ID = 'default';
 
-// 从天天基金API获取基金数据
+// 内存缓存
+const fundDataCache = {};
+const CACHE_TTL = 60000; // 缓存1分钟
+
+// 从天天基金API获取基金数据（带缓存）
 async function fetchFundDataFromAPI(fundCode) {
   try {
+    // 检查缓存
+    const cached = fundDataCache[fundCode];
+    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+      console.log(`从缓存读取: ${fundCode}`);
+      return cached.data;
+    }
+
+    console.log(`从API获取: ${fundCode}`);
+    
     const url = `http://fundgz.1234567.com.cn/js/${fundCode}.js`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      }
+    });
     
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status}`);
@@ -28,7 +45,7 @@ async function fetchFundDataFromAPI(fundCode) {
     
     const data = JSON.parse(match[1]);
     
-    return {
+    const result = {
       code: data.fundcode,
       name: data.name,
       nav: parseFloat(data.dwjz),
@@ -36,8 +53,23 @@ async function fetchFundDataFromAPI(fundCode) {
       growth: data.gszzl ? parseFloat(data.gszzl) : 0,
       time: data.gztime
     };
+    
+    // 更新缓存
+    fundDataCache[fundCode] = {
+      data: result,
+      timestamp: Date.now()
+    };
+    
+    return result;
   } catch (error) {
     console.error(`获取基金数据失败: ${fundCode}`, error);
+    
+    // 如果有缓存，即使过期也返回
+    if (fundDataCache[fundCode]) {
+      console.log(`使用过期缓存: ${fundCode}`);
+      return fundDataCache[fundCode].data;
+    }
+    
     return null;
   }
 }
@@ -95,15 +127,6 @@ module.exports = async (req, res) => {
             throw insertError;
           }
           
-          // 如果需要实时数据
-          if (with_data === 'true') {
-            return res.status(200).json({
-              code: 0,
-              data: [],
-              message: '读取成功（新创建）'
-            });
-          }
-          
           return res.status(200).json({
             code: 0,
             data: [],
@@ -120,17 +143,17 @@ module.exports = async (req, res) => {
       if (with_data === 'true' && fundCodes.length > 0) {
         console.log(`获取 ${fundCodes.length} 只基金的实时数据...`);
         
-        const fundDataList = [];
-        for (const code of fundCodes) {
-          const fundData = await fetchFundDataFromAPI(code);
-          if (fundData) {
-            fundDataList.push(fundData);
-          }
-        }
+        // 并行获取所有基金数据
+        const fundDataList = await Promise.all(
+          fundCodes.map(code => fetchFundDataFromAPI(code))
+        );
+        
+        // 过滤掉失败的请求
+        const validData = fundDataList.filter(d => d !== null);
         
         return res.status(200).json({
           code: 0,
-          data: fundDataList,
+          data: validData,
           message: '读取成功'
         });
       }
