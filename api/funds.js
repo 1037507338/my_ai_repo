@@ -86,7 +86,7 @@ module.exports = async (req, res) => {
   }
   
   try {
-    const { with_data, code } = req.query;
+    const { force, code } = req.query;
     
     // GET /api/funds?code=xxx → 获取单只基金数据
     if (req.method === 'GET' && code) {
@@ -106,7 +106,7 @@ module.exports = async (req, res) => {
       });
     }
     
-    // GET /api/funds → 获取基金代码列表
+    // GET /api/funds → 获取基金代码列表（带数据）
     if (req.method === 'GET') {
       const { data, error } = await supabase
         .from('funds')
@@ -139,22 +139,67 @@ module.exports = async (req, res) => {
       
       const fundCodes = data.fund_codes || [];
       
-      // 如果需要实时数据
-      if (with_data === 'true' && fundCodes.length > 0) {
-        console.log(`获取 ${fundCodes.length} 只基金的实时数据...`);
+      // 正常查询：从缓存读取
+      if (fundCodes.length > 0) {
+        console.log(`读取 ${fundCodes.length} 只基金数据（优先缓存）...`);
         
-        // 并行获取所有基金数据
-        const fundDataList = await Promise.all(
-          fundCodes.map(code => fetchFundDataFromAPI(code))
-        );
+        // 优先从缓存读取
+        const cachedData = [];
+        const uncachedCodes = [];
         
-        // 过滤掉失败的请求
-        const validData = fundDataList.filter(d => d !== null);
+        fundCodes.forEach(code => {
+          if (fundDataCache[code] && (Date.now() - fundDataCache[code].timestamp) < CACHE_TTL) {
+            cachedData.push(fundDataCache[code].data);
+          } else {
+            uncachedCodes.push(code);
+          }
+        });
         
+        // 如果强制刷新或部分缓存缺失，从API获取
+        if (force === 'true' || uncachedCodes.length > 0) {
+          const codesToFetch = force === 'true' ? fundCodes : uncachedCodes;
+          console.log(`从API获取 ${codesToFetch.length} 只基金...`);
+          
+          // 并行获取
+          const fundDataList = await Promise.all(
+            codesToFetch.map(code => fetchFundDataFromAPI(code))
+          );
+          
+          // 过滤失败请求
+          const validData = fundDataList.filter(d => d !== null);
+          
+          // 更新缓存
+          validData.forEach(d => {
+            fundDataCache[d.code] = {
+              data: d,
+              timestamp: Date.now()
+            };
+          });
+          
+          // 如果强制刷新，返回API数据
+          if (force === 'true') {
+            return res.status(200).json({
+              code: 0,
+              data: validData,
+              message: '读取成功（强制刷新）'
+            });
+          }
+          
+          // 否则合并缓存和新数据
+          const allData = [...cachedData, ...validData];
+          
+          return res.status(200).json({
+            code: 0,
+            data: allData,
+            message: '读取成功'
+          });
+        }
+        
+        // 全部命中缓存
         return res.status(200).json({
           code: 0,
-          data: validData,
-          message: '读取成功'
+          data: cachedData,
+          message: '读取成功（缓存）'
         });
       }
       
