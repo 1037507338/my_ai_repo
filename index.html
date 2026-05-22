@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>基金实时估值跟踪器 v5.1</title>
+    <title>基金实时估值跟踪器 v6.0</title>
     <style>
         * {
             margin: 0;
@@ -66,7 +66,7 @@
             padding: 12px 15px;
             border: 2px solid #dee2e6;
             border-radius: 8px;
-            font-size: 16px; /* 防止iOS缩放 */
+            font-size: 16px;
             transition: border-color 0.3s;
         }
 
@@ -134,6 +134,24 @@
         .status-bar .time {
             font-weight: 600;
             color: #667eea;
+        }
+
+        .error-banner {
+            padding: 12px 15px;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: none;
+        }
+
+        .error-banner.show {
+            display: block;
+        }
+
+        .error-banner .close-btn {
+            float: right;
+            cursor: pointer;
+            font-weight: bold;
         }
 
         /* 桌面端：表格布局 */
@@ -309,7 +327,7 @@
             }
 
             .input-group input {
-                font-size: 16px; /* 防止iOS自动缩放 */
+                font-size: 16px;
             }
 
             button {
@@ -323,7 +341,6 @@
                 align-items: flex-start;
             }
 
-            /* 隐藏表格，显示卡片 */
             .table-container {
                 display: none;
             }
@@ -427,7 +444,6 @@
             }
         }
 
-        /* 桌面端：隐藏卡片 */
         @media (min-width: 769px) {
             .cards-container {
                 display: none;
@@ -438,8 +454,13 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 基金实时估值跟踪器 v5.1</h1>
-            <p>✨ 支持拖拽排序 · 移动端适配 · 数据持久化（浏览器本地）</p>
+            <h1>📊 基金实时估值跟踪器 v6.0</h1>
+            <p>✨ 支持拖拽排序 · 移动端适配 · Supabase云存储</p>
+        </div>
+
+        <div class="error-banner" id="errorBanner">
+            <span class="close-btn" onclick="closeError()">×</span>
+            <span id="errorMessage"></span>
         </div>
 
         <div class="controls">
@@ -472,7 +493,6 @@
             </div>
         </div>
 
-        <!-- 桌面端：表格布局 -->
         <div class="table-container">
             <table>
                 <thead>
@@ -501,7 +521,6 @@
             </table>
         </div>
 
-        <!-- 移动端：卡片布局 -->
         <div class="cards-container" id="fundCardsContainer">
             <div class="empty-state">
                 <p><strong>暂无基金</strong></p>
@@ -516,11 +535,22 @@
     </div>
 
     <script>
-        // 基金列表（从localStorage加载）
+        // 基金列表（只从服务器加载）
         let fundList = [];
         let refreshInterval = null;
         let isLoading = false;
         let dragSrcEl = null;
+
+        // 显示错误
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorBanner').classList.add('show');
+        }
+
+        // 关闭错误提示
+        function closeError() {
+            document.getElementById('errorBanner').classList.remove('show');
+        }
 
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -528,29 +558,74 @@
             loadFundList();
             updateTime();
             setInterval(updateTime, 1000);
-            
-            if (fundList.length > 0) {
-                console.log('检测到已有基金列表，开始加载数据...');
-                refreshAll();
-                startAutoRefresh();
-            }
         });
 
-        // 加载基金列表（从localStorage）
-        function loadFundList() {
-            const saved = localStorage.getItem('fundTrackerList');
-            if (saved) {
-                fundList = JSON.parse(saved);
-                console.log('从localStorage加载基金列表：', fundList);
+        // 加载基金列表（只从服务器API）
+        async function loadFundList() {
+            try {
+                console.log('开始从服务器加载基金列表...');
+                const response = await fetch('/api/funds');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.code !== 0) {
+                    throw new Error(result.error || 'API返回错误');
+                }
+                
+                fundList = result.data || [];
+                console.log('从服务器加载基金列表成功：', fundList);
+                
+                renderTable();
+                renderCards();
+                
+                if (fundList.length > 0) {
+                    refreshAll();
+                    startAutoRefresh();
+                }
+                
+            } catch (error) {
+                console.error('从服务器加载基金列表失败：', error);
+                showError('加载基金列表失败：' + error.message);
+                fundList = [];
                 renderTable();
                 renderCards();
             }
         }
 
-        // 保存基金列表（到localStorage）
-        function saveFundList() {
-            localStorage.setItem('fundTrackerList', JSON.stringify(fundList));
-            console.log('基金列表已保存到localStorage');
+        // 保存基金列表（只保存到服务器API）
+        async function saveFundList() {
+            try {
+                console.log('开始保存基金列表到服务器...', fundList);
+                
+                const response = await fetch('/api/funds', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(fundList)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.code !== 0) {
+                    throw new Error(result.error || 'API返回错误');
+                }
+                
+                console.log('基金列表已保存到服务器');
+                
+            } catch (error) {
+                console.error('保存基金列表到服务器失败：', error);
+                showError('保存基金列表失败：' + error.message);
+                throw error;
+            }
         }
 
         // 添加基金
@@ -582,7 +657,7 @@
                 if (data) {
                     console.log('基金数据获取成功：', data);
                     fundList.push(code);
-                    saveFundList();
+                    await saveFundList();
                     renderTable();
                     renderCards();
                     input.value = '';
@@ -604,12 +679,16 @@
         async function deleteFund(index) {
             if (confirm('确定要删除这只基金吗？')) {
                 fundList.splice(index, 1);
-                saveFundList();
-                renderTable();
-                renderCards();
-                
-                if (fundList.length === 0) {
-                    stopAutoRefresh();
+                try {
+                    await saveFundList();
+                    renderTable();
+                    renderCards();
+                    
+                    if (fundList.length === 0) {
+                        stopAutoRefresh();
+                    }
+                } catch (error) {
+                    alert('删除基金失败：' + error.message);
                 }
             }
         }
@@ -623,10 +702,14 @@
 
             if (confirm('确定要清空所有基金吗？此操作不可恢复！')) {
                 fundList = [];
-                saveFundList();
-                renderTable();
-                renderCards();
-                stopAutoRefresh();
+                try {
+                    await saveFundList();
+                    renderTable();
+                    renderCards();
+                    stopAutoRefresh();
+                } catch (error) {
+                    alert('清空基金列表失败：' + error.message);
+                }
             }
         }
 
@@ -635,7 +718,6 @@
             try {
                 console.log('开始获取基金数据：', fundCode);
                 
-                // 调用Vercel API路由（同源，无CORS问题）
                 const response = await fetch(`/api/fund?code=${fundCode}`);
                 
                 if (!response.ok) {
@@ -652,7 +734,6 @@
                 
                 console.log('API返回数据：', data);
                 
-                // 处理数据
                 const output = {
                     code: data.fundcode,
                     name: data.name,
@@ -714,7 +795,6 @@
             row.cells[3].textContent = data.name;
             row.cells[4].textContent = data.nav.toFixed(4);
             
-            // 处理估算净值为null的情况
             if (data.estimatedNav !== null && data.estimatedNav !== undefined) {
                 row.cells[5].textContent = data.estimatedNav.toFixed(4);
                 
@@ -724,7 +804,6 @@
                 
                 row.cells[7].textContent = data.time;
             } else {
-                // 非交易时间
                 row.cells[5].textContent = '暂无';
                 row.cells[6].textContent = '--';
                 row.cells[6].className = 'growth';
@@ -829,7 +908,6 @@
                     <td><button class="delete-btn" onclick="deleteFund(${index})">删除</button></td>
                 `;
                 
-                // 拖拽事件
                 row.addEventListener('dragstart', handleDragStart);
                 row.addEventListener('dragover', handleDragOver);
                 row.addEventListener('dragenter', handleDragEnter);
@@ -894,7 +972,6 @@
                     <button class="card-delete-btn" onclick="deleteFund(${index})">删除</button>
                 `;
                 
-                // 拖拽事件
                 card.addEventListener('dragstart', handleDragStart);
                 card.addEventListener('dragover', handleDragOver);
                 card.addEventListener('dragenter', handleDragEnter);
@@ -967,7 +1044,7 @@
             });
         }
 
-        // 开始自动刷新（2分钟 = 120秒）
+        // 开始自动刷新
         function startAutoRefresh() {
             if (refreshInterval) clearInterval(refreshInterval);
             
@@ -976,7 +1053,7 @@
                 if (isTradingTime() && !isLoading) {
                     refreshAll();
                 }
-            }, 120000); // 120000ms = 2分钟
+            }, 120000);
         }
 
         // 停止自动刷新
@@ -995,10 +1072,8 @@
             const hour = now.getHours();
             const minute = now.getMinutes();
             
-            // 周末不刷新
             if (day === 0 || day === 6) return false;
             
-            // 交易时间：9:30-11:30, 13:00-15:00
             const time = hour * 100 + minute;
             return (time >= 930 && time <= 1130) || (time >= 1300 && time <= 1500);
         }
