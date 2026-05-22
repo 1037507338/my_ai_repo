@@ -1,0 +1,8 @@
+{
+  "name": "fund-tracker",
+  "version": "1.0.0",
+  "description": "基金实时估值跟踪器",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3"
+  }
+}
