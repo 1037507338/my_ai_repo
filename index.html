@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>基金实时估值跟踪器 v3.0</title>
+    <title>基金实时估值跟踪器 v4.0</title>
     <style>
         * {
             margin: 0;
@@ -86,7 +86,7 @@
         }
 
         .btn-add {
-            background: #28a;
+            background: #28a745;
             color: white;
         }
 
@@ -162,7 +162,7 @@
         tbody tr {
             border-bottom: 1px solid #e9ecef;
             transition: background 0.2s;
-            cursor: move; /* 拖拽光标 */
+            cursor: move;
         }
 
         tbody tr:hover {
@@ -231,7 +231,7 @@
         }
 
         .growth.negative {
-            color: #28a;
+            color: #28a745;
         }
 
         .delete-btn {
@@ -305,8 +305,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 基金实时估值跟踪器 v3.0</h1>
-            <p>✨ 支持拖拽排序 · 2分钟自动刷新 · 基于天天基金网API</p>
+            <h1>📊 基金实时估值跟踪器 v4.0</h1>
+            <p>✨ 支持拖拽排序 · 2分钟自动刷新 · Vercel API代理</p>
         </div>
 
         <div class="controls">
@@ -482,70 +482,44 @@
             }
         }
 
-        // 获取基金数据（使用JSONP）
-        function fetchFundData(fundCode) {
-            return new Promise((resolve, reject) => {
+        // 获取基金数据（使用Vercel API代理）
+        async function fetchFundData(fundCode) {
+            try {
                 console.log('开始获取基金数据：', fundCode);
                 
-                const url = `http://fundgz.1234567.com.cn/js/${fundCode}.js?rt=${Date.now()}`;
-                const script = document.createElement('script');
+                // 调用Vercel API路由（同源，无CORS问题）
+                const response = await fetch(`/api/fund?code=${fundCode}`);
                 
-                // 保存原始回调函数（如果存在）
-                const originalCallback = window.jsonpgz;
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 
-                // 重写回调函数
-                window.jsonpgz = function(data) {
-                    console.log('JSONP回调执行：', data);
-                    
-                    // 恢复原始函数
-                    if (originalCallback) {
-                        window.jsonpgz = originalCallback;
-                    } else {
-                        delete window.jsonpgz;
-                    }
-                    
-                    // 清理script标签
-                    if (script.parentNode) {
-                        script.parentNode.removeChild(script);
-                    }
-                    
-                    // 处理数据
-                    const result = {
-                        code: data.fundcode,
-                        name: data.name,
-                        nav: parseFloat(data.dwjz),
-                        estimatedNav: data.gsz ? parseFloat(data.gsz) : null,
-                        growth: data.gszzl ? parseFloat(data.gszzl) : 0,
-                        time: data.gztime
-                    };
-                    
-                    resolve(result);
+                const result = await response.json();
+                
+                if (result.code !== 0) {
+                    throw new Error(result.error || 'API返回错误');
+                }
+                
+                const data = result.data;
+                
+                console.log('API返回数据：', data);
+                
+                // 处理数据
+                const output = {
+                    code: data.fundcode,
+                    name: data.name,
+                    nav: parseFloat(data.dwjz),
+                    estimatedNav: data.gsz ? parseFloat(data.gsz) : null,
+                    growth: data.gszzl ? parseFloat(data.gszzl) : 0,
+                    time: data.gztime
                 };
                 
-                // 错误处理
-                script.onerror = function() {
-                    console.error('Script加载失败：', url);
-                    if (script.parentNode) {
-                        script.parentNode.removeChild(script);
-                    }
-                    window.jsonpgz = originalCallback;
-                    reject(new Error('网络请求失败'));
-                };
+                return output;
                 
-                // 设置src并添加到页面
-                script.src = url;
-                document.body.appendChild(script);
-                
-                // 超时处理（10秒）
-                setTimeout(() => {
-                    if (script.parentNode) {
-                        console.warn('请求超时：', fundCode);
-                        script.parentNode.removeChild(script);
-                        window.jsonpgz = originalCallback;
-                        reject(new Error('请求超时'));
-                    }
-                }, 10000);
-            });
+            } catch (error) {
+                console.error('获取基金数据失败：', error);
+                throw error;
+            }
         }
 
         // 刷新所有基金
