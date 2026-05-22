@@ -5,8 +5,42 @@ const supabaseUrl = process.env.SUPABASE_URL || 'https://ypqxjtkiazawlmakvjnc.su
 const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwcXhqdGtpYXphd2xtYWt2am5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzE3NjQsImV4cCI6MjA5NTAwNzc2NH0.vbQU_khbbvoX0XKqOpFF3Ce7CXdBuyZ-HvIqjJ71tko';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 默认用户ID
 const DEFAULT_USER_ID = 'default';
+
+// 从天天基金API获取基金数据
+async function fetchFundDataFromAPI(fundCode) {
+  try {
+    const url = `http://fundgz.1234567.com.cn/js/${fundCode}.js`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    
+    // 解析JSONP响应：jsonpgz({...})
+    const match = text.match(/jsonpgz\((.*)\)/s);
+    
+    if (!match) {
+      throw new Error('Invalid API response format');
+    }
+    
+    const data = JSON.parse(match[1]);
+    
+    return {
+      code: data.fundcode,
+      name: data.name,
+      nav: parseFloat(data.dwjz),
+      estimatedNav: data.gsz ? parseFloat(data.gsz) : null,
+      growth: data.gszzl ? parseFloat(data.gszzl) : 0,
+      time: data.gztime
+    };
+  } catch (error) {
+    console.error(`获取基金数据失败: ${fundCode}`, error);
+    return null;
+  }
+}
 
 module.exports = async (req, res) => {
   // 允许CORS
@@ -20,8 +54,28 @@ module.exports = async (req, res) => {
   }
   
   try {
+    const { with_data, code } = req.query;
+    
+    // GET /api/funds?code=xxx → 获取单只基金数据
+    if (req.method === 'GET' && code) {
+      const fundData = await fetchFundDataFromAPI(code);
+      
+      if (!fundData) {
+        return res.status(500).json({
+          code: -1,
+          error: '获取基金数据失败'
+        });
+      }
+      
+      return res.status(200).json({
+        code: 0,
+        data: fundData,
+        message: '获取成功'
+      });
+    }
+    
+    // GET /api/funds → 获取基金代码列表
     if (req.method === 'GET') {
-      // 读取基金列表
       const { data, error } = await supabase
         .from('funds')
         .select('fund_codes')
@@ -41,9 +95,18 @@ module.exports = async (req, res) => {
             throw insertError;
           }
           
+          // 如果需要实时数据
+          if (with_data === 'true') {
+            return res.status(200).json({
+              code: 0,
+              data: [],
+              message: '读取成功（新创建）'
+            });
+          }
+          
           return res.status(200).json({
             code: 0,
-            data: newData.fund_codes,
+            data: [],
             message: '读取成功（新创建）'
           });
         }
@@ -51,14 +114,35 @@ module.exports = async (req, res) => {
         throw error;
       }
       
+      const fundCodes = data.fund_codes || [];
+      
+      // 如果需要实时数据
+      if (with_data === 'true' && fundCodes.length > 0) {
+        console.log(`获取 ${fundCodes.length} 只基金的实时数据...`);
+        
+        const fundDataList = [];
+        for (const code of fundCodes) {
+          const fundData = await fetchFundDataFromAPI(code);
+          if (fundData) {
+            fundDataList.push(fundData);
+          }
+        }
+        
+        return res.status(200).json({
+          code: 0,
+          data: fundDataList,
+          message: '读取成功'
+        });
+      }
+      
       return res.status(200).json({
         code: 0,
-        data: data.fund_codes,
+        data: fundCodes,
         message: '读取成功'
       });
       
     } else if (req.method === 'POST') {
-      // 保存基金列表
+      // POST /api/funds → 保存基金代码列表
       const fundCodes = req.body;
       
       if (!Array.isArray(fundCodes)) {
@@ -69,11 +153,10 @@ module.exports = async (req, res) => {
       }
       
       // 更新基金列表
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('funds')
         .update({ fund_codes: fundCodes })
-        .eq('user_id', DEFAULT_USER_ID)
-        .select();
+        .eq('user_id', DEFAULT_USER_ID);
       
       if (error) {
         throw error;
