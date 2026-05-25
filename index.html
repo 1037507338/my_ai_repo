@@ -253,6 +253,25 @@
             font-size: 12px;
         }
 
+        .drag-handle {
+            cursor: grab;
+            color: #999;
+            font-size: 16px;
+            user-select: none;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        tbody tr.dragging {
+            opacity: 0.5;
+        }
+
+        tbody tr.drag-over {
+            border-top: 2px solid #4a6cf7;
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -686,7 +705,7 @@
             const tbody = document.getElementById('fundTableBody');
             
             if (fundList.length === 0) {
-                tbody.innerHTML = '<tr class="empty-state-row"><td colspan="8"><div class="empty-state"><p>暂无基金，添加后跟踪</p></div></td></tr>';
+                tbody.innerHTML = '<tr class="empty-state-row"><td colspan="9"><div class="empty-state"><p>暂无基金，添加后跟踪</p></div></td></tr>';
                 return;
             }
             
@@ -695,8 +714,11 @@
             fundList.forEach((code, index) => {
                 const data = fundDataCache[code];
                 const row = document.createElement('tr');
+                row.draggable = true;
+                row.dataset.index = index;
                 
                 row.innerHTML = `
+                    <td><span class="drag-handle">☰</span></td>
                     <td>${index + 1}</td>
                     <td class="fund-code">${code}</td>
                     <td class="fund-name">${data ? data.name : '加载中...'}</td>
@@ -708,6 +730,8 @@
                 `;
                 tbody.appendChild(row);
             });
+            
+            initDragAndDrop();
         }
 
         function renderCards() {
@@ -737,6 +761,62 @@
                 `;
                 
                 container.appendChild(card);
+            });
+        }
+
+        function initDragAndDrop() {
+            const tbody = document.getElementById('fundTableBody');
+            
+            tbody.addEventListener('dragstart', function(e) {
+                if (e.target.classList.contains('drag-handle')) {
+                    dragSrcIndex = parseInt(e.target.closest('tr').dataset.index);
+                    e.target.closest('tr').classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                }
+            });
+
+            tbody.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                const tr = e.target.closest('tr');
+                if (tr && !tr.classList.contains('empty-state-row')) {
+                    tr.classList.add('drag-over');
+                }
+            });
+
+            tbody.addEventListener('dragleave', function(e) {
+                const tr = e.target.closest('tr');
+                if (tr) {
+                    tr.classList.remove('drag-over');
+                }
+            });
+
+            tbody.addEventListener('drop', function(e) {
+                e.preventDefault();
+                
+                const tr = e.target.closest('tr');
+                if (tr) {
+                    tr.classList.remove('drag-over');
+                }
+                
+                if (e.target.classList.contains('drag-handle')) {
+                    const dropIndex = parseInt(e.target.closest('tr').dataset.index);
+                    
+                    // 交换位置
+                    const temp = fundList[dragSrcIndex];
+                    fundList.splice(dragSrcIndex, 1);
+                    fundList.splice(dropIndex, 0, temp);
+                    
+                    renderTable();
+                }
+            });
+
+            tbody.addEventListener('dragend', function(e) {
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    row.classList.remove('dragging', 'drag-over');
+                });
             });
         }
 
