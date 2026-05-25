@@ -773,12 +773,12 @@
             const tbody = document.getElementById('fundTableBody');
             
             tbody.addEventListener('dragstart', function(e) {
-                // 修复：使用 closest 检查是否点击了拖拽手柄
-                const handle = e.target.closest('.drag-handle');
-                if (handle) {
-                    dragSrcIndex = parseInt(handle.closest('tr').dataset.index);
+                // 修复：直接获取被拖拽的行（e.target 是 <tr>）
+                const tr = e.target.closest ? e.target.closest('tr') : e.target;
+                if (tr && tr.tagName === 'TR' && !tr.classList.contains('empty-state-row')) {
+                    dragSrcIndex = parseInt(tr.dataset.index);
                     console.log('拖拽开始，源索引：', dragSrcIndex);
-                    handle.closest('tr').classList.add('dragging');
+                    tr.classList.add('dragging');
                     e.dataTransfer.effectAllowed = 'move';
                 }
             });
