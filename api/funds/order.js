@@ -5,7 +5,7 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 );
 
-const DEFAULT_USER_ID = 'default';
+const DEFAULT_USER_ID = 1;
 
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,13 +23,23 @@ export default async function handler(req, res) {
         
         console.log('保存基金顺序：', fundList);
         
-        // 直接更新 fund_codes 字段（顺序即保存在数组中）
-        const { error } = await supabase
-            .from('funds')
-            .update({ fund_codes: fundList })
-            .eq('user_id', DEFAULT_USER_ID);
+        // 批量更新每只基金的 sort_order
+        const updates = fundList.map((fundCode, index) => ({
+            user_id: DEFAULT_USER_ID,
+            fund_code: fundCode,
+            sort_order: index
+        }));
         
-        if (error) throw error;
+        // 逐个更新（Supabase不支持批量upsert不同行）
+        for (const item of updates) {
+            const { error } = await supabase
+                .from('funds')
+                .update({ sort_order: item.sort_order })
+                .eq('user_id', item.user_id)
+                .eq('fund_code', item.fund_code);
+            
+            if (error) throw error;
+        }
         
         console.log('顺序保存成功');
         return res.status(200).json({ code: 0, message: 'Order saved', data: fundList });

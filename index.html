@@ -666,25 +666,36 @@
             }
         }
 
-        // 保存基金代码列表（含顺序）
-        async function saveFundList() {
-            try {
-                const response = await fetch('/api/funds', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(fundList)
-                });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
-                const result = await response.json();
-                if (result.code !== 0) throw new Error(result.error);
-                
-                console.log('保存成功');
-            } catch (error) {
-                console.error('保存失败：', error);
-                showError('保存失败：' + error.message);
-                throw error;
-            }
+        // 添加基金到数据库
+        async function addFundToDB(fundCode) {
+            const response = await fetch('/api/funds', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'add', fundCode })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            if (result.code !== 0) throw new Error(result.error || '添加失败');
+        }
+
+        // 从数据库删除基金
+        async function deleteFundFromDB(fundCode) {
+            const response = await fetch(`/api/funds?fundCode=${fundCode}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            if (result.code !== 0) throw new Error(result.error || '删除失败');
+        }
+
+        // 清空数据库中所有基金
+        async function clearFundsFromDB() {
+            const response = await fetch('/api/funds?clear=all', {
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            if (result.code !== 0) throw new Error(result.error || '清空失败');
         }
 
         // 保存当前顺序到数据库
@@ -788,18 +799,19 @@
             try {
                 const data = await fetchFundData(code);
                 if (data) {
+                    await addFundToDB(code);
                     fundList.push(code);
                     fundDataCache[code] = data;
-                    await saveFundList();
                     renderTable();
                     renderCards();
                     input.value = '';
                     startAutoRefresh();
+                    showToast('添加成功！', 'success');
                 } else {
-                    alert('基金代码无效！');
+                    showToast('基金代码无效！', 'error');
                 }
             } catch (error) {
-                alert('添加失败：' + error.message);
+                showToast('添加失败：' + error.message, 'error');
             } finally {
                 showLoading(false);
                 isLoading = false;
@@ -815,12 +827,13 @@
             delete fundDataCache[code];
             
             try {
-                await saveFundList();
+                await deleteFundFromDB(code);
                 renderTable();
                 renderCards();
                 if (fundList.length === 0) stopAutoRefresh();
+                showToast('已删除', 'success');
             } catch (error) {
-                alert('删除失败：' + error.message);
+                showToast('删除失败：' + error.message, 'error');
             }
         }
 
@@ -832,12 +845,13 @@
             fundList = [];
             fundDataCache = {};
             try {
-                await saveFundList();
+                await clearFundsFromDB();
                 renderTable();
                 renderCards();
                 stopAutoRefresh();
+                showToast('已清空', 'success');
             } catch (error) {
-                alert('清空失败：' + error.message);
+                showToast('清空失败：' + error.message, 'error');
             }
         }
 
