@@ -494,6 +494,7 @@
         let fundDataCache = {};      // 基金数据缓存
         let refreshInterval = null;
         let isLoading = false;
+        let dragSrcIndex = null;      // 拖拽源索引（新增）
 
         function showError(message) {
             document.getElementById('errorMessage').textContent = message;
@@ -772,9 +773,12 @@
             const tbody = document.getElementById('fundTableBody');
             
             tbody.addEventListener('dragstart', function(e) {
-                if (e.target.classList.contains('drag-handle')) {
-                    dragSrcIndex = parseInt(e.target.closest('tr').dataset.index);
-                    e.target.closest('tr').classList.add('dragging');
+                // 修复：使用 closest 检查是否点击了拖拽手柄
+                const handle = e.target.closest('.drag-handle');
+                if (handle) {
+                    dragSrcIndex = parseInt(handle.closest('tr').dataset.index);
+                    console.log('拖拽开始，源索引：', dragSrcIndex);
+                    handle.closest('tr').classList.add('dragging');
                     e.dataTransfer.effectAllowed = 'move';
                 }
             });
@@ -804,16 +808,27 @@
                     tr.classList.remove('drag-over');
                 }
                 
-                // 修复：移除错误的条件判断
+                // 修复：检查 dragSrcIndex 是否有值
+                if (dragSrcIndex === null || dragSrcIndex === undefined) {
+                    console.error('拖拽失败：dragSrcIndex 未设置');
+                    return;
+                }
+                
                 if (tr && !tr.classList.contains('empty-state-row')) {
                     const dropIndex = parseInt(tr.dataset.index);
+                    console.log('拖拽结束，目标索引：', dropIndex);
                     
                     // 交换位置
-                    const temp = fundList[dragSrcIndex];
-                    fundList.splice(dragSrcIndex, 1);
-                    fundList.splice(dropIndex, 0, temp);
+                    if (dragSrcIndex !== dropIndex) {
+                        const temp = fundList[dragSrcIndex];
+                        fundList.splice(dragSrcIndex, 1);
+                        fundList.splice(dropIndex, 0, temp);
+                        
+                        console.log('顺序已改变：', fundList);
+                        renderTable();
+                    }
                     
-                    renderTable();
+                    dragSrcIndex = null; // 重置
                 }
             });
 
@@ -822,6 +837,7 @@
                 rows.forEach(row => {
                     row.classList.remove('dragging', 'drag-over');
                 });
+                dragSrcIndex = null; // 重置
             });
         }
 
