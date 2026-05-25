@@ -1,16 +1,15 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://ypqxjtkiazawlmakvjnc.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwcXhqdGtpYXphd2xtYWt2am5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzE3NjQsImV4cCI6MjA5NTAwNzc2NH0.vbQU_khbbvoX0XKqOpFF3Ce7CXdBuyZ-HvIqjJ71tko';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const DEFAULT_USER_ID = 1; // 默认用户id
+const DEFAULT_USER_ID = 1;
 
 // 内存缓存
 const fundDataCache = {};
-const CACHE_TTL = 120000; // 2分钟
+const CACHE_TTL = 120000;
 
-// 从天天基金API获取数据（带缓存）
 async function fetchFundDataFromAPI(fundCode) {
   try {
     const cached = fundDataCache[fundCode];
@@ -48,7 +47,6 @@ async function fetchFundDataFromAPI(fundCode) {
   }
 }
 
-// 获取基金列表（按sort_order排序）
 async function getFundList() {
   const { data, error } = await supabase
     .from('funds')
@@ -68,7 +66,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   
   try {
-    const { force, code } = req.query;
+    const { force, code, clear, fundCode } = req.query;
     
     // GET /api/funds?code=xxx → 单只基金数据
     if (req.method === 'GET' && code) {
@@ -85,7 +83,6 @@ module.exports = async (req, res) => {
         return res.status(200).json({ code: 0, data: [] });
       }
       
-      // 分缓存命中和未命中
       const cachedData = [];
       const uncachedCodes = [];
       
@@ -119,21 +116,19 @@ module.exports = async (req, res) => {
     
     // POST /api/funds → 添加基金
     if (req.method === 'POST') {
-      const { action, fundCode } = req.body;
+      const { action, fundCode: bodyFundCode } = req.body;
+      const fc = bodyFundCode || fundCode;
       
-      // 添加基金
-      if (action === 'add' && fundCode) {
-        // 获取当前最大sort_order
+      if (action === 'add' && fc) {
         const fundList = await getFundList();
         
-        // 检查是否已存在
-        if (fundList.includes(fundCode)) {
+        if (fundList.includes(fc)) {
           return res.status(200).json({ code: 0, message: '已存在' });
         }
         
         const { error } = await supabase
           .from('funds')
-          .insert([{ user_id: DEFAULT_USER_ID, fund_code: fundCode, sort_order: fundList.length }]);
+          .insert([{ user_id: DEFAULT_USER_ID, fund_code: fc, sort_order: fundList.length }]);
         
         if (error) throw error;
         return res.status(200).json({ code: 0, message: '添加成功' });
@@ -144,7 +139,7 @@ module.exports = async (req, res) => {
     
     // DELETE /api/funds → 删除基金
     if (req.method === 'DELETE') {
-      const { fundCode, clear } = req.query;
+      const fc = fundCode || (req.query || {}).fundCode;
       
       // 清空所有
       if (clear === 'all') {
@@ -157,14 +152,13 @@ module.exports = async (req, res) => {
         return res.status(200).json({ code: 0, message: '清空成功' });
       }
       
-      // 删除单只
-      if (!fundCode) return res.status(400).json({ code: -1, error: '缺少fundCode' });
+      if (!fc) return res.status(400).json({ code: -1, error: '缺少fundCode' });
       
       const { error } = await supabase
         .from('funds')
         .delete()
         .eq('user_id', DEFAULT_USER_ID)
-        .eq('fund_code', fundCode);
+        .eq('fund_code', fc);
       
       if (error) throw error;
       return res.status(200).json({ code: 0, message: '删除成功' });
