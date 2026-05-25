@@ -800,8 +800,9 @@
                     tr.classList.remove('drag-over');
                 }
                 
-                if (e.target.classList.contains('drag-handle')) {
-                    const dropIndex = parseInt(e.target.closest('tr').dataset.index);
+                // 修复：移除错误的条件判断
+                if (tr && !tr.classList.contains('empty-state-row')) {
+                    const dropIndex = parseInt(tr.dataset.index);
                     
                     // 交换位置
                     const temp = fundList[dragSrcIndex];
