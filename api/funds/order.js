@@ -28,30 +28,35 @@ export default async function handler(req, res) {
         
         console.log('保存基金顺序：', fundList);
         
-        // 1. 获取现有基金
-        const { data: existingFunds, error: fetchError } = await supabase
-            .from('funds')
-            .select('*');
-        
-        if (fetchError) throw fetchError;
-        
-        // 2. 删除所有现有基金
+        // 简化逻辑：直接删除所有行，然后插入新顺序
+        // 1. 删除所有现有基金（不使用 .neq）
         const { error: deleteError } = await supabase
             .from('funds')
             .delete()
-            .neq('id', 0);  // 删除所有行
+            .gte('id', 0);  // 删除所有行（id >= 0）
         
-        if (deleteError) throw deleteError;
+        if (deleteError) {
+            console.error('删除失败：', deleteError);
+            throw deleteError;
+        }
         
-        // 3. 按新顺序插入基金
+        console.log('删除成功，准备插入新顺序');
+        
+        // 2. 按新顺序插入基金
         const fundsToInsert = fundList.map(code => ({ code }));
-        const { error: insertError } = await supabase
+        console.log('准备插入：', fundsToInsert);
+        
+        const { data: insertData, error: insertError } = await supabase
             .from('funds')
-            .insert(fundsToInsert);
+            .insert(fundsToInsert)
+            .select();
         
-        if (insertError) throw insertError;
+        if (insertError) {
+            console.error('插入失败：', insertError);
+            throw insertError;
+        }
         
-        console.log('顺序保存成功：', fundList);
+        console.log('顺序保存成功：', insertData);
         
         return res.status(200).json({
             code: 0,
