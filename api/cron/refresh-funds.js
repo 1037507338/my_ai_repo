@@ -1,25 +1,22 @@
-// Vercel Cron Job: 每30秒刷新基金缓存
+// Vercel Cron Job: 刷新基金缓存
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://ypqxjtkiazawlmakvjnc.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwcXhqdGtpYXphd2xtYWt2am5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MzE3NjQsImV4cCI6MjA5NTAwNzc2NH0.vbQU_khbbvoX0XKqOpFF3Ce7CXdBuyZ-HvIqjJ71tko';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const DEFAULT_USER_ID = 'default';
+const DEFAULT_USER_ID = 1;
 const CACHE_TTL = 120000;
 
-// 内存缓存（与 funds.js 共享）
 const fundDataCache = {};
 
 async function fetchFundDataFromAPI(fundCode) {
   try {
     const cached = fundDataCache[fundCode];
     if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-      console.log(`Cron: 从缓存读取 ${fundCode}`);
       return cached.data;
     }
 
-    console.log(`Cron: 从API获取 ${fundCode}`);
     const url = `http://fundgz.1234567.com.cn/js/${fundCode}.js`;
     const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' }
@@ -53,22 +50,19 @@ module.exports = async (req, res) => {
   console.log('Cron Job: 刷新基金缓存...');
   
   try {
+    // 新表结构：每行一只基金，查询 fund_code 列
     const { data, error } = await supabase
       .from('funds')
-      .select('fund_codes')
-      .eq('user_id', DEFAULT_USER_ID)
-      .single();
+      .select('fund_code')
+      .eq('user_id', DEFAULT_USER_ID);
     
-    if (error || !data) {
+    if (error || !data || data.length === 0) {
       return res.status(200).json({ message: 'No funds to refresh' });
     }
     
-    const fundCodes = data.fund_codes || [];
-    if (fundCodes.length === 0) {
-      return res.status(200).json({ message: 'Empty fund list' });
-    }
-    
+    const fundCodes = data.map(d => d.fund_code);
     console.log(`Cron: 刷新 ${fundCodes.length} 只基金...`);
+    
     const results = await Promise.all(
       fundCodes.map(code => fetchFundDataFromAPI(code))
     );
