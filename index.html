@@ -662,10 +662,9 @@
                         <th>序号</th>
                         <th>基金代码</th>
                         <th>基金名称</th>
-                        <th>昨日净值</th>
-                        <th>估算净值</th>
-                        <th>估算涨幅</th>
-                        <th>估值时间</th>
+                        <th>单位净值</th>
+                        <th>日涨跌幅</th>
+                        <th>净值日期</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -932,12 +931,12 @@
             const code = input.value.trim();
             
             if (!code) {
-                alert('请输入基金代码！');
+                showToast('请输入基金代码！', 'info');
                 return;
             }
 
             if (fundList.includes(code)) {
-                alert('该基金已在列表中！');
+                showToast('该基金已在列表中！', 'info');
                 return;
             }
 
@@ -1009,7 +1008,7 @@
             const tbody = document.getElementById('fundTableBody');
             
             if (fundList.length === 0) {
-                tbody.innerHTML = '<tr class="empty-state-row"><td colspan="9"><div class="empty-state"><p>暂无基金，添加后跟踪</p></div></td></tr>';
+                tbody.innerHTML = '<tr class="empty-state-row"><td colspan="8"><div class="empty-state"><p>暂无基金，添加后跟踪</p></div></td></tr>';
                 return;
             }
             
@@ -1027,9 +1026,8 @@
                     <td class="fund-code">${code}</td>
                     <td class="fund-name">${data ? data.name : '加载中...'}</td>
                     <td>${data ? data.nav.toFixed(4) : '--'}</td>
-                    <td>${data && data.estimatedNav !== null ? data.estimatedNav.toFixed(4) : '--'}</td>
                     <td class="growth ${data && data.growth >= 0 ? 'positive' : data && data.growth < 0 ? 'negative' : ''}">${data ? (data.growth >= 0 ? '+' : '') + data.growth.toFixed(2) + '%' : '--'}</td>
-                    <td>${data ? data.time : '--'}</td>
+                    <td>${data ? data.navDate : '--'}</td>
                     <td><button class="delete-btn" onclick="deleteFund(${index})">删除</button></td>
                 `;
                 tbody.appendChild(row);
@@ -1060,7 +1058,7 @@
                     </div>
                     <div class="card-right">
                         <div class="card-growth ${data && data.growth >= 0 ? 'positive' : data && data.growth < 0 ? 'negative' : ''}">${data ? (data.growth >= 0 ? '+' : '') + data.growth.toFixed(2) + '%' : '--'}</div>
-                        <div class="card-time">${data ? data.time : '--'}</div>
+                        <div class="card-time">${data ? data.navDate : '--'}</div>
                     </div>
                 `;
                 
