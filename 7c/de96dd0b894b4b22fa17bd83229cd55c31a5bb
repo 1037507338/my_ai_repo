@@ -1,0 +1,21 @@
+api/funds.js
+  s_f5fedba2949a7e::t_16144faed74d2d 10,12-72,77-93,96-101,103,107,119,128,130,133,139,142,146,149,157,161,166,170,174,177,181,184,188,192,196,199,202,208,212,214,220,224,226
+api/cron/refresh-funds.js
+  s_f5fedba2949a7e::t_47a5a690d7148a 10,13-70,75-90,93-98,100,111,117,121,124,128,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "7cde96dd0b894b4b22fa17bd83229cd55c31a5bb",
+  "prompts": {},
+  "sessions": {
+    "s_f5fedba2949a7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68c388d1-268a-464e-8724-94258b0b4128",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "saisi <saisi@xiaohongshu.com>"
+    }
+  }
+}
