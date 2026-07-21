@@ -10,65 +10,6 @@ const DEFAULT_USER_ID = 1;
 const fundDataCache = {};
 const CACHE_TTL = 120000; // 2分钟
 
-// 基金名称缓存（长期有效）
-const fundNameCache = {};
-
-// 获取基金名称（3层兜底）
-async function fetchFundName(fundCode) {
-  if (fundNameCache[fundCode]) return fundNameCache[fundCode];
-
-  const fetchWithTimeout = (url, opts, ms = 5000) =>
-    Promise.race([
-      fetch(url, opts),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
-    ]).catch(() => null);
-
-  // 方式1：东方财富 F10 基金概况接口
-  try {
-    const r = await fetchWithTimeout(
-      `https://fundgz.1234567.com.cn/f10/${fundCode}.js?rt=${Date.now()}`,
-      { headers: { 'User-Agent': 'Mozilla/5.0' } }
-    );
-    if (r && r.ok) {
-      const t = await r.text();
-      const m = t.match(/[,"]name:"([^"]+)"/);
-      if (m && m[1]) { fundNameCache[fundCode] = m[1]; return m[1]; }
-    }
-  } catch (_) {}
-
-  // 方式2：东方财富搜索建议接口
-  try {
-    const r = await fetchWithTimeout(
-      `https://suggest3.eastmoney.com/search?words=${fundCode}&type=fs&t=${Date.now()}`,
-      { headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://fund.eastmoney.com/' } }
-    );
-    if (r && r.ok) {
-      const j = await r.json();
-      const found = j?.Query?.Result?.find(x => (x.CODE || x.FCODE) === fundCode);
-      if (found && (found.SHORTNAME || found.NAME)) {
-        fundNameCache[fundCode] = found.SHORTNAME || found.NAME;
-        return fundNameCache[fundCode];
-      }
-    }
-  } catch (_) {}
-
-  // 方式3：pingzhongdata 基金概况
-  try {
-    const r = await fetchWithTimeout(
-      `https://fund.eastmoney.com/pingzhongdata/${fundCode}.js?v=${Date.now()}`,
-      { headers: { 'User-Agent': 'Mozilla/5.0' } }
-    );
-    if (r && r.ok) {
-      const t = await r.text();
-      const m = t.match(/fS_name\s*=\s*["']([^"']+)["']/);
-      if (m && m[1]) { fundNameCache[fundCode] = m[1]; return m[1]; }
-    }
-  } catch (_) {}
-
-  fundNameCache[fundCode] = '';
-  return '';
-}
-
 // 从东方财富API获取基金数据（历史净值）
 async function fetchFundDataFromAPI(fundCode) {
   try {
@@ -96,13 +37,9 @@ async function fetchFundDataFromAPI(fundCode) {
     }
 
     const fund = data.LSJZList[0];
-
-    // 并行获取基金名称
-    const namePromise = fetchFundName(fundCode);
-
     const result = {
       code: fundCode,
-      name: await namePromise, // 历史接口不返回基金名称，改为主动获取
+      name: '', // 历史接口不返回基金名称
       nav: parseFloat(fund.DWJZ), // 单位净值
       prevNav: null,
       growth: parseFloat(fund.JZZZL), // 日涨跌幅
