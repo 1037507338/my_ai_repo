@@ -53,20 +53,46 @@ async function fetchEastmoneyNav(fundCode) {
   };
 }
 
+async function fetchNameFromMobApi(fundCode) {
+  const url = `https://fundmobapi.eastmoney.com/FundMNewApi/FundMNBaseInfo?FCODE=${fundCode}&plat=Android&appType=ttjj&product=EFund&Version=1&deviceid=vercel${Date.now()}`;
+  const resp = await fetch(url, { headers: { 'User-Agent': UA } });
+  if (!resp.ok) throw new Error(`mobapi ${resp.status}`);
+  const json = await resp.json();
+  return json?.Datas?.SHORTNAME || json?.Datas?.FULLNAME || json?.Datas?.NAME || '';
+}
+
+async function fetchNameFromSuggest(fundCode) {
+  const cb = `cb_${Date.now()}`;
+  const url = `https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?m=1&key=${fundCode}&callback=${cb}`;
+  const resp = await fetch(url, { headers: { 'User-Agent': UA, 'Referer': 'https://fund.eastmoney.com/' } });
+  if (!resp.ok) throw new Error(`suggest ${resp.status}`);
+  const text = await resp.text();
+  const match = text.match(new RegExp(`${cb}\\((.*)\\)\\s*;?\\s*$`, 's'));
+  if (!match) throw new Error('suggest jsonp parse fail');
+  const json = JSON.parse(match[1]);
+  const arr = json?.Datas;
+  if (!Array.isArray(arr)) return '';
+  const hit = arr.find(d => d.CODE === fundCode) || arr[0];
+  return hit?.NAME || hit?.FundBaseInfo?.SHORTNAME || '';
+}
+
 async function fetchFundName(fundCode) {
   const cached = fundNameCache[fundCode];
   if (cached && (Date.now() - cached.timestamp) < NAME_CACHE_TTL) return cached.name;
-  try {
-    const url = `https://fundmobapi.eastmoney.com/FundMNewApi/FundMNBaseInfo?FCODE=${fundCode}&plat=Android&appType=ttjj&product=EFund&Version=1&deviceid=vercel${Date.now()}`;
-    const resp = await fetch(url, { headers: { 'User-Agent': UA } });
-    if (!resp.ok) throw new Error('baseinfo fail');
-    const json = await resp.json();
-    const name = json?.Datas?.SHORTNAME || json?.Datas?.NAME || '';
-    if (name) fundNameCache[fundCode] = { name, timestamp: Date.now() };
-    return name;
-  } catch (e) {
-    return '';
+
+  const tries = [fetchNameFromMobApi, fetchNameFromSuggest];
+  for (const fn of tries) {
+    try {
+      const name = await fn(fundCode);
+      if (name) {
+        fundNameCache[fundCode] = { name, timestamp: Date.now() };
+        return name;
+      }
+    } catch (e) {
+      console.error(`Cron: 获取基金名失败(${fn.name}): ${fundCode}`, e.message);
+    }
   }
+  return '';
 }
 
 async function fetchFundDataFromAPI(fundCode) {
