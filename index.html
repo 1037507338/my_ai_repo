@@ -798,6 +798,14 @@
                     fundDataCache[f.code] = f;
                 });
                 
+                // 更新数据来源标签
+                const sources = fundDataList.filter(f => f && f.source).map(f => f.source);
+                const hasRealtime = sources.includes('sina_realtime');
+                const labelEl = document.getElementById('dataSourceLabel');
+                if (labelEl) {
+                    labelEl.textContent = hasRealtime ? '新浪财经（盘中实时估算）' : '东方财富（历史净值）';
+                }
+                
                 renderTable();
                 renderCards();
                 
@@ -908,6 +916,14 @@
                 fundDataList.forEach(f => {
                     fundDataCache[f.code] = f;
                 });
+                
+                // 更新数据来源标签
+                const sources = fundDataList.filter(f => f && f.source).map(f => f.source);
+                const hasRealtime = sources.includes('sina_realtime');
+                const labelEl = document.getElementById('dataSourceLabel');
+                if (labelEl) {
+                    labelEl.textContent = hasRealtime ? '新浪财经（盘中实时估算）' : '东方财富（历史净值）';
+                }
                 
                 renderTable();
                 renderCards();
